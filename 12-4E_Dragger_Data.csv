@@ -514,16 +514,16 @@ b-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8,1,142
 0-2-formation,1* cool Beach,10,1,M16,1,605,k11 sl10 eot,1,104
 0-2-formation,1* cool Beach,10,1,M16,1,605,k11 sl10 eot,1,115
 0-2-formation,1* cool Beach,10,1,M16,1,605,k11 sl10 eot,1,96
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,163
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,85
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,63
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,121
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,85
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,45
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,91
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,82
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,58
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 8/8 6 speed,1,88
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,163
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,85
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,63
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,121
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,85
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,45
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,91
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,82
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,58
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 8/8,1,88
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,79
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,65
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,77
@@ -534,16 +534,16 @@ b-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8,1,142
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,85
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,56
 0-2-formation,1* cool Beach,10,1,M16,1,605,416 mod3 10/10 speq,1,62
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,52
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,65
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,66
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,45
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,141
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,40
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,44
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,64
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,68
-0-2-formation,1* cool Beach,10,1,M16,1,605,uzi mod2 9/8 6 speed,1,35
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,52
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,65
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,66
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,45
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,141
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,40
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,44
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,64
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,68
+0-2-formation,1* cool Beach,6,1,M16,1,605,uzi mod2 9/8,1,35
 b-formation,5* dmg1 Rescue,4,1,M16,1,605,416 mod2 10/8 speq,0,32
 b-formation,5* dmg1 Rescue,4,1,M16,1,605,416 mod2 10/8 speq,0,29
 b-formation,5* dmg1 Rescue,4,1,M16,1,605,416 mod2 10/8 speq,0,18
