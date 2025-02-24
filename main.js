@@ -32,6 +32,10 @@ var gflDescription;
 var chippedBody;
 var chiplessBody;
 
+var chippedSetupsOptions;
+var chippedDPSOptions;
+var testedDPS;
+var dpsBlocks;
 var chippedChartBodies = [];
 
 function getUniquesInCol(json, colKey) {
@@ -77,32 +81,32 @@ function toggleChippedCharts(index) {
     chippedChartBodies[index].style("display", "block");
 }
 
-function loadChartTabs() {
-    // charts and data of chipped data
-{
-    const chippedCharts = chippedBody.append("div")
-                                        .attr("class", "tabs")
-                                        .attr("id", "chart toggle");
-    const tabHolder = chippedCharts.append("div").attr("class", "dropdownBox");
-    tabHolder.append("a")
-                    .text("test");
-    tabHolder.append("a")
-                    .text("test2");
-    // post-chip update is the default shown because it is the most up-to-date version of the game                                    
-    /*chippedCharts.append("div")
-                    .attr("class", "box")
-                    .text("Post-Chip Update")
-                    .on("click", function() {
-                        showChippedData();
-                    });
-    chippedCharts.append("div")
-                    .attr("class", "box")
-                    .text("Pre-Chip Update")
-                    .on("click", function() {
-                        showChiplessData();
-                    });   */
-                                     
+function toggleChippedChartDropdown() {
+    if (chippedSetupsOptions.style("display") == "none")
+        chippedSetupsOptions.style("display", "block");
+    else
+        chippedSetupsOptions.style("display", "none");
 }
+
+function toggleChippedDPSDropdown() {
+    if (chippedDPSOptions.style("display") == "none") {
+        chippedDPSOptions.style("display", "block");
+        // get DPS units tested in the setup
+        testedDPS = getUniquesInCol(filteredData, "DPS");
+        dpsBlocks = [];
+        testedDPS.forEach((d) => {
+            dpsBlocks.push(chippedDPSOptions.append("a")
+                                            .text(d)
+                                            .on("click", () => {
+                                                showTable(filterDPS(d));
+                                            }));
+        });
+    }
+    else
+    {
+        chippedDPSOptions.style("display", "none");
+        dpsBlocks.forEach(d => d.remove());
+    }
 }
 
 function filterData(formation = null, fairy = null, isminspeed = null, hg = null, tank = null, armor = null, dps = null, chip = null) {
@@ -130,15 +134,23 @@ function filterData(formation = null, fairy = null, isminspeed = null, hg = null
     }
 }
 
+function filterDPS(dps) {
+    return filteredData.filter(d => d.DPS == dps);
+}
+
 function removeTable() {
     table.remove();
 }
 
-function showTable() {
+function showTable(data = filteredData) {
+    // delete previous table to update with new filter
+    if (table != null)
+        table.remove();
+
     table = d3.select("body").append("table");
     // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
     table.selectAll("tr")
-        .data(filteredData)
+        .data(data)
         .enter()
         .append("tr")
         .selectAll("td")
@@ -149,7 +161,7 @@ function showTable() {
     // use insert before first tr to create the header
     table.insert("tr", "tr")
         .selectAll("th")
-        .data(["Formation", "Fairy", "Speed", "Has_HG", "Tank", "Has_armor", "DPS", "Has_chip", "Damage", "Perc_Damage"])
+        .data(["Formation", "Fairy", "Speed", "Has_HG", "Tank", "Has_armor", "DPS", "Has_chip", "Damage Taken", "Perc_Damage"])
         .enter()
         .append("th")
         .text(d => d);
@@ -170,13 +182,7 @@ d3.csv("12-4E_Dragger_Data.csv",
             perc_damage: `${(+d.damage / +d.max_HP * 100).toFixed(2)}%`
         };
     }).then(data => {
-        csvData = data; 
-        
-        filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 1, Carry.UZI, 1);
-        
-        showTable();
-
-        console.log(getUniquesInCol(csvData, "formation"));
+        csvData = data;
     });
 // info for non-gfl players
 {
@@ -416,10 +422,92 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 }
 
 showChippedData();
-
-chippedBody.append("div")
-                    .attr("class", "box")
-                    .text("Post-Chip Update")
-                    .on("click", function() {
-                        loadChartTabs();
-                    });
+// chipped setups dropdown
+{
+    // holder of dropdown buttons
+    const chippedDropdownHolder = chippedBody.append("div").style("display", "flex");
+    // button to show setup dropdown
+    const chippedCharts = chippedDropdownHolder.append("div")
+                .attr("class", "box")
+                .text("Tested Setups")
+                .on("click", function() {
+                    toggleChippedChartDropdown();
+                });
+    chippedCharts.append("i")
+                    .attr("class", "fa fa-caret-down");       
+    //holder of the setup dropdown options
+    {
+        chippedSetupsOptions = chippedCharts.append("div").attr("class", "dropdownBox").style("display", "none");
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*dmg1 Rescue Jill b-formation min speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*dmg1 Rescue Jill b-formation max speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*fervor mortar Jill b-formation min speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*fervor mortar Jill b-formation max speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.MORTAR, 0, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation min speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation max speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });  
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 1*cool lv100beach Jill b-formation min speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 1*cool lv100beach Jill b-formation max speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 1*cool lv100beach Jill 0-2-formation min speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+        chippedSetupsOptions.append("a")
+                        .text("Chipped DPS m16 1*cool lv100beach Jill 0-2-formation max speed")
+                        .on("click", () => {
+                            filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
+                            showTable();
+                        });
+    }         
+    // button to show dps dropdown     
+    const chippedDPS = chippedDropdownHolder.append("div")
+                .attr("class", "box")
+                .style("float", "right")
+                .text("Tested DPS")
+                .on("click", function() {
+                    toggleChippedDPSDropdown();
+                });
+    chippedDPS.append("i")
+                    .attr("class", "fa fa-caret-down");
+    chippedDPSOptions = chippedDPS.append("div").attr("class", "dropdownBox").style("display", "none");     
+}
