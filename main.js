@@ -32,7 +32,15 @@ var gflDescription;
 var chippedBody;
 var chiplessBody;
 
-var chartBody;
+var chippedChartBodies = [];
+
+function getUniquesInCol(json, colKey) {
+    var res = [];
+
+    json.forEach(d => res.push(d[colKey]));
+    
+    return res.filter((d, i, a) => a.indexOf(d) == i);
+}
 
 function toggleGFLDesc() {
     if (gflDescription.style("display") == "block") {
@@ -62,15 +70,26 @@ function addSection(body, headerText, bodyText) {
             .html(bodyText);
 }
 
+function toggleChippedCharts(index) {
+    for (var i = 0; i < chippedChartBodies.length; i++) {
+        chippedChartBodies[i].style("display", "none");
+    }
+    chippedChartBodies[index].style("display", "block");
+}
+
 function loadChartTabs() {
     // charts and data of chipped data
 {
     const chippedCharts = chippedBody.append("div")
                                         .attr("class", "tabs")
                                         .attr("id", "chart toggle");
-    
+    const tabHolder = chippedCharts.append("div").attr("class", "dropdownBox");
+    tabHolder.append("a")
+                    .text("test");
+    tabHolder.append("a")
+                    .text("test2");
     // post-chip update is the default shown because it is the most up-to-date version of the game                                    
-    chippedCharts.append("div")
+    /*chippedCharts.append("div")
                     .attr("class", "box")
                     .text("Post-Chip Update")
                     .on("click", function() {
@@ -81,14 +100,27 @@ function loadChartTabs() {
                     .text("Pre-Chip Update")
                     .on("click", function() {
                         showChiplessData();
-                    });   
+                    });   */
                                      
 }
 }
 
-function filterData(formation, fairy, isminspeed, hg, tank, armor, dps, chip) {
-    filteredData = csvData.filter(d => d.formation == formation && d.fairy.match(fairy) && d.has_HG == hg && d.tank.match(tank) && 
-                                d.has_armor == armor && d.DPS.toLowerCase().match(dps) && d.has_chip == chip);
+function filterData(formation = null, fairy = null, isminspeed = null, hg = null, tank = null, armor = null, dps = null, chip = null) {
+    filteredData = csvData;
+    if (formation != null)
+        filteredData = filteredData.filter(d => d.formation == formation);
+    if (fairy != null)
+        filteredData = filteredData.filter(d => d.fairy.match(fairy));
+    if (hg != null)
+        filteredData = filteredData.filter(d => d.has_HG == hg);
+    if (tank != null)
+        filteredData = filteredData.filter(d => d.tank.match(tank));
+    if (armor != null)
+        filteredData = filteredData.filter(d => d.has_armor == armor);
+    if (dps != null)
+        filteredData = filteredData.filter(d => d.DPS.toLowerCase().match(dps));
+    if (chip != null)
+        filteredData = filteredData.filter(d => d.has_chip == chip);
 //DPS is lower cased because of an inconsistency in the data for one of the names starting with a capital letter when all other names are fully lowercase
     if (isminspeed) {
         filteredData = filteredData.filter(d => d.speed == 4);
@@ -141,9 +173,10 @@ d3.csv("12-4E_Dragger_Data.csv",
         csvData = data; 
         
         filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 1, Carry.UZI, 1);
-
-        loadChartTabs();
+        
         showTable();
+
+        console.log(getUniquesInCol(csvData, "formation"));
     });
 // info for non-gfl players
 {
@@ -384,3 +417,9 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 
 showChippedData();
 
+chippedBody.append("div")
+                    .attr("class", "box")
+                    .text("Post-Chip Update")
+                    .on("click", function() {
+                        loadChartTabs();
+                    });
