@@ -33,12 +33,9 @@ var chippedBody;
 var chiplessBody;
 
 var chippedSetupsOptions;
-var chippedDPSOptions;
 var chiplessSetupsOptions;
-var chiplessDPSOptions;
+var DPSOptions;
 
-var testedDPS;
-var dpsBlocks;
 var chippedChartBodies = [];
 
 function getUniquesInCol(json, colKey) {
@@ -63,13 +60,19 @@ function toggleGFLDesc() {
 function showChippedData() {
     chippedBody.style("display", "block");
     chiplessBody.style("display", "none");
+    // remove table when changing between chipped and chipless sections
+    if (table != null) 
+        table.remove();
 }
 
 function showChiplessData() {
     chippedBody.style("display", "none");
     chiplessBody.style("display", "block");
+    // remove table when changing between chipped and chipless sections
+    if (table != null)
+        table.remove();
 }
-
+// add a section of text, header and body, to the specified html element body
 function addSection(body, headerText, bodyText) {
     body.append("h3")
             .html(headerText);
@@ -84,59 +87,40 @@ function toggleChippedCharts(index) {
     chippedChartBodies[index].style("display", "block");
 }
 
-function toggleChippedChartDropdown() {
-    if (chippedSetupsOptions.style("display") == "none")
-        chippedSetupsOptions.style("display", "block");
-    else
-        chippedSetupsOptions.style("display", "none");
+function toggleChartDropdown() {
+    // check if chip or chipless data is selected and show the dropdown options that correspond to it
+    if (chippedBody.style("display") == "block") {
+        if (chippedSetupsOptions.style("display") == "none")
+            chippedSetupsOptions.style("display", "block");
+        else
+            chippedSetupsOptions.style("display", "none");
+    }
+    else {
+        if (chiplessSetupsOptions.style("display") == "none")
+            chiplessSetupsOptions.style("display", "block");
+        else
+            chiplessSetupsOptions.style("display", "none");
+    }
 }
 
-function toggleChippedDPSDropdown() {
-    if (chippedDPSOptions.style("display") == "none") {
-        chippedDPSOptions.style("display", "block");
-        // get DPS units tested in the setup
-        testedDPS = getUniquesInCol(filteredData, "DPS");
-        dpsBlocks = [];
-        testedDPS.forEach((d) => {
-            dpsBlocks.push(chippedDPSOptions.append("a")
-                                            .text(d)
-                                            .on("click", () => {
-                                                showTable(filterDPS(d));
-                                            }));
+function toggleDPSDropdown() {
+    if (DPSOptions.style("display") == "none") {
+        DPSOptions.style("display", "block");
+        // get DPS units tested in the selected setup
+        var testedDPS = getUniquesInCol(filteredData, "DPS");
+        testedDPS.forEach((d) => { //push to array for ease of removal
+            DPSOptions.append("a")
+                        .text(d)
+                        .on("click", () => {
+                            showTable(filterDPS(d));
+                        });
         });
     }
     else
     {
-        chippedDPSOptions.style("display", "none");
-        dpsBlocks.forEach(d => d.remove());
-    }
-}
-
-function toggleChiplessChartDropdown() {
-    if (chiplessSetupsOptions.style("display") == "none")
-        chiplessSetupsOptions.style("display", "block");
-    else
-        chiplessSetupsOptions.style("display", "none");
-}
-
-function toggleChiplessDPSDropdown() {
-    if (chiplessDPSOptions.style("display") == "none") {
-        chiplessDPSOptions.style("display", "block");
-        // get DPS units tested in the setup
-        testedDPS = getUniquesInCol(filteredData, "DPS");
-        dpsBlocks = [];
-        testedDPS.forEach((d) => {
-            dpsBlocks.push(chiplessDPSOptions.append("a")
-                                            .text(d)
-                                            .on("click", () => {
-                                                showTable(filterDPS(d));
-                                            }));
-        });
-    }
-    else
-    {
-        chiplessDPSOptions.style("display", "none");
-        dpsBlocks.forEach(d => d.remove());
+        DPSOptions.style("display", "none");
+        // there is no guarantee that the next setup has the same set of DPS units so we clear and recreate the list each time
+        DPSOptions.selectAll("*").remove();
     }
 }
 
@@ -456,22 +440,36 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 showChippedData();
 // divider for next section
 d3.select("body").append("hr");
-// chipped setups dropdowns
+// header for chart section
+d3.select("body").append("h2")
+                    .text("Charts of Tested Setups");
 {
     // holder of dropdown buttons
-    const chippedDropdownHolder = chippedBody.append("div").style("display", "flex");
+    const chartDropdownHolder = d3.select("body").append("div").style("display", "flex");
     // button to show setup dropdown
-    const chippedCharts = chippedDropdownHolder.append("div")
+    const setupDropdown = chartDropdownHolder.append("div")
                 .attr("class", "box")
                 .text("Tested Setups")
                 .on("click", function() {
-                    toggleChippedChartDropdown();
+                    toggleChartDropdown();
                 });
-    chippedCharts.append("i")
-                    .attr("class", "fa fa-caret-down");       
-    //holder of the setup dropdown options
+    setupDropdown.append("i")
+                    .attr("class", "fa fa-caret-down");
+    // button to show dps dropdown     
+    const DPSDropdown = chartDropdownHolder.append("div")
+                .attr("class", "box")
+                .style("float", "right")
+                .text("Tested DPS")
+                .on("click", function() {
+                    toggleDPSDropdown();
+                });
+    DPSDropdown.append("i")
+                    .attr("class", "fa fa-caret-down");
+    DPSOptions = DPSDropdown.append("div").attr("class", "dropdownBox").style("display", "none"); 
+    // chipped setups dropdown      
     {
-        chippedSetupsOptions = chippedCharts.append("div").attr("class", "dropdownBox").style("display", "none");
+        //holder of the chipped setup dropdown options
+        chippedSetupsOptions = setupDropdown.append("div").attr("class", "dropdownBox").style("display", "none");
         chippedSetupsOptions.append("a")
                         .text("All setups")
                         .on("click", () => {
@@ -539,35 +537,10 @@ d3.select("body").append("hr");
                             showTable();
                         });
     }         
-    // button to show dps dropdown     
-    const chippedDPS = chippedDropdownHolder.append("div")
-                .attr("class", "box")
-                .style("float", "right")
-                .text("Tested DPS")
-                .on("click", function() {
-                    toggleChippedDPSDropdown();
-                });
-    chippedDPS.append("i")
-                    .attr("class", "fa fa-caret-down");
-    chippedDPSOptions = chippedDPS.append("div").attr("class", "dropdownBox").style("display", "none");     
-}
-
-// chipless setups dropdowns
-{
-    // holder of dropdown buttons
-    const chiplessDropdownHolder = chiplessBody.append("div").style("display", "flex");
-    // button to show setup dropdown
-    const chiplessCharts = chiplessDropdownHolder.append("div")
-                                                    .attr("class", "box")
-                                                    .text("Tested Setups")
-                                                    .on("click", function() {
-                                                        toggleChiplessChartDropdown();
-                                                    });
-    chiplessCharts.append("i")
-                    .attr("class", "fa fa-caret-down");       
-    //holder of the setup dropdown options
+    // chipless setups dropdown
     {
-        chiplessSetupsOptions = chiplessCharts.append("div").attr("class", "dropdownBox").style("display", "none");
+        // holder of chipless setups dropdown options
+        chiplessSetupsOptions = setupDropdown.append("div").attr("class", "dropdownBox").style("display", "none");
         chiplessSetupsOptions.append("a")
                                 .text("All setups")
                                 .on("click", () => {
@@ -754,16 +727,5 @@ d3.select("body").append("hr");
                                     filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 0);
                                     showTable();
                                 });
-    }         
-    // button to show dps dropdown     
-    const chiplessDPS = chiplessDropdownHolder.append("div")
-                .attr("class", "box")
-                .style("float", "right")
-                .text("Tested DPS")
-                .on("click", function() {
-                    toggleChiplessDPSDropdown();
-                });
-    chiplessDPS.append("i")
-                    .attr("class", "fa fa-caret-down");
-    chiplessDPSOptions = chiplessDPS.append("div").attr("class", "dropdownBox").style("display", "none");     
+    }  
 }
