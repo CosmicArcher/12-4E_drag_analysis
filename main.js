@@ -127,7 +127,11 @@ function toggleDPSDropdown() {
         DPSOptions.style("display", "block");
         // get DPS units tested in the selected setup
         var testedDPS = getUniquesInCol(filteredData, "DPS");
-        testedDPS.forEach((d) => { //push to array for ease of removal
+        // for the case where all chips setup has some uzi entries with capital letters while the rest are all lowercase
+        testedDPS.forEach((d, i) => testedDPS[i] = d.toLowerCase());
+        testedDPS = testedDPS.filter((d, i, a) => a.indexOf(d) == i);
+        //push to array for ease of removal
+        testedDPS.forEach((d) => { 
             DPSOptions.append("a")
                         .text(d)
                         .on("click", () => {
@@ -170,7 +174,7 @@ function filterData(formation = null, fairy = null, isminspeed = null, hg = null
 }
 
 function filterDPS(dps) {
-    return filteredData.filter(d => d.DPS == dps);
+    return filteredData.filter(d => d.DPS.toLowerCase().match(dps));
 }
 
 function widenSetupData(htmlBody, data = filteredData) {
