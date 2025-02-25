@@ -173,6 +173,58 @@ function filterDPS(dps) {
     return filteredData.filter(d => d.DPS == dps);
 }
 
+function widenSetupData(htmlBody, data = filteredData) {
+    var dpsList = getUniquesInCol(data, "DPS");
+    // store damage data in temporary arrays
+    var dpsData = [];
+    dpsList.forEach((d, i) => {
+        //create 2 columns per dps, one for damage taken, the other for perc_damage
+        dpsData.push([]);
+        dpsData.push([]);
+
+        var dpsDamage = data.filter(datum => datum.DPS == d);
+        dpsDamage.forEach(datum => {
+            // because each dps has 2 columns, the indices of the next one is in intervals of 2
+            dpsData[i * 2].push(datum.damage);
+            dpsData[i * 2 + 1].push(datum.perc_damage);
+        });
+    });
+    // get the largest amount of rows a single dps needs so that the other dps will have empty entries at the end to equalize their rows
+    var largestSample = 0;
+    for (var i = 0; i < dpsData.length; i += 2) {
+        if (dpsData[i].length > largestSample)
+            largestSample = dpsData[i].length;
+    }
+    // store the json data
+    var wideData = [];
+    // establish the json per row
+    for (var i = 0; i < largestSample; i++) {
+        var newObj = {};
+        dpsList.forEach((d, index) => {
+            // if there is still data for that dps before reaching the last row
+            if (i < dpsData[index * 2].length) {
+                newObj[d + " damage"] = dpsData[index * 2][i];
+                newObj[d + " perc"] = dpsData[index * 2 + 1][i];
+            }
+            // if this dps has less samples than the dps with the most, leave empty entries for the rest of its data
+            else {
+                newObj[d + " damage"] = "";
+                newObj[d + " perc"] = "";
+            }
+        });
+        wideData.push(newObj);
+    }
+    var keys = Object.keys(wideData[0]);
+    // arrange header array to have flat damage on the left and perc_damage on the right which would also arrange the data accordingly
+    var headers = [];
+    for (var i = 0; i < dpsList.length; i++)
+        headers.push(keys[i * 2]);
+    for (var i = 0; i < dpsList.length; i++)
+        headers.push(keys[i * 2 + 1]);
+
+    createTable(htmlBody, headers, wideData);
+}
+
 function createTable(htmlBody, tableHeaders, tableData) {
     // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
     htmlBody.selectAll("tr")
@@ -258,11 +310,14 @@ function showCSVTable(data = filteredData) {
     
     table = d3.select("body").append("table");
     var headers;
-    if (getUniquesInCol(filteredData, "formation").length > 1)
+    if (getUniquesInCol(data, "formation").length > 1) {
         headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
-    else
-        headers = ["DPS", "damage", "perc_damage"];
-    createTable(table, headers, filteredData);
+        createTable(table, headers, data);
+    }
+    else {
+        widenSetupData(table, data);
+    }
+    
 }
 
 d3.csv("12-4E_Dragger_Data.csv",
