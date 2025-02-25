@@ -63,7 +63,7 @@ function showChippedData() {
     chiplessBody.style("display", "none");
     // remove table when changing between chipped and chipless sections
     if (table != null) 
-        removeTable();
+        removeCSVTable();
     // in case the chipless dropdowns are still displayed when switching tabs, hide them
     if (chiplessSetupsOptions.style("display") == "block")
             chiplessSetupsOptions.style("display", "none");
@@ -80,7 +80,7 @@ function showChiplessData() {
     chiplessBody.style("display", "block");
     // remove table when changing between chipped and chipless sections
     if (table != null)
-        removeTable();
+        removeCSVTable();
     // in case the chipless dropdowns are still displayed when switching tabs, hide them
     if (chippedSetupsOptions.style("display") == "block")
             chippedSetupsOptions.style("display", "none");
@@ -173,7 +173,32 @@ function filterDPS(dps) {
     return filteredData.filter(d => d.DPS == dps);
 }
 
-function removeTable() {
+function createTable(htmlBody, tableHeaders, tableData) {
+    // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
+    htmlBody.selectAll("tr")
+        .data(tableData)
+        .enter()
+        .append("tr")
+        .selectAll("td")
+        .data(datum => {
+            var res = [];
+            tableHeaders.forEach(d => res.push(datum[d]));
+            //[d.formation, d.fairy, d.speed, d.has_HG, d.tank, d.has_armor, d.DPS, d.has_chip, d.damage, d.perc_damage]
+            return res;
+        })
+        .enter()
+        .append("td")
+        .text(d => d);
+    // use insert before first tr to create the header
+    htmlBody.insert("tr", "tr")
+        .selectAll("th")
+        .data(tableHeaders)
+        .enter()
+        .append("th")
+        .text(d => d);
+}
+
+function removeCSVTable() {
     tableTitle.remove();
     table.remove();
 }
@@ -181,7 +206,7 @@ function removeTable() {
 function showCSVTable(data = filteredData) {
     // delete previous table to update with new filter
     if (table != null)
-        removeTable();
+        removeCSVTable();
     // title of table
     {
         // assemble the string using the filtered data, all columns except DPS, damage, perc_damage have a single value if a setup is selected
@@ -198,8 +223,7 @@ function showCSVTable(data = filteredData) {
             title += uniques[0] + " ";
         title += "DPS ";
         // check if "all setups" has been selected or not by seeing if both formations are in the filtered dataset
-        uniques = getUniquesInCol(data, "formation");
-        if (uniques.length > 1) {
+        if (getUniquesInCol(data, "formation").length > 1) {
             title += "All Setups ";
         }
         else {
@@ -233,23 +257,12 @@ function showCSVTable(data = filteredData) {
     }
     
     table = d3.select("body").append("table");
-    // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
-    table.selectAll("tr")
-        .data(data)
-        .enter()
-        .append("tr")
-        .selectAll("td")
-        .data(d => [d.formation, d.fairy, d.speed, d.has_HG, d.tank, d.has_armor, d.DPS, d.has_chip, d.damage, d.perc_damage])
-        .enter()
-        .append("td")
-        .text(d => d);
-    // use insert before first tr to create the header
-    table.insert("tr", "tr")
-        .selectAll("th")
-        .data(["Formation", "Fairy", "Speed", "Has_HG", "Tank", "Has_armor", "DPS", "Has_chip", "Damage Taken", "Perc_Damage"])
-        .enter()
-        .append("th")
-        .text(d => d);
+    var headers;
+    if (getUniquesInCol(filteredData, "formation").length > 1)
+        headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
+    else
+        headers = ["DPS", "damage", "perc_damage"];
+    createTable(table, headers, filteredData);
 }
 
 d3.csv("12-4E_Dragger_Data.csv",
