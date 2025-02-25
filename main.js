@@ -24,6 +24,7 @@ const Carry = {
 
 var csvData;
 var table;
+var tableTitle;
 var filteredData;
 
 var gflDescriptionToggle;
@@ -62,7 +63,16 @@ function showChippedData() {
     chiplessBody.style("display", "none");
     // remove table when changing between chipped and chipless sections
     if (table != null) 
-        table.remove();
+        removeTable();
+    // in case the chipless dropdowns are still displayed when switching tabs, hide them
+    if (chiplessSetupsOptions.style("display") == "block")
+            chiplessSetupsOptions.style("display", "none");
+    if (DPSOptions.style("display") == "block") {
+        DPSOptions.style("display", "none");
+        // there is no guarantee that the next setup has the same set of DPS units so we clear and recreate the list each time
+        // I am aware that I can use object pooling to be more resource efficient but I'm too lazy to do it properly
+        DPSOptions.selectAll("*").remove();
+    }
 }
 
 function showChiplessData() {
@@ -70,7 +80,16 @@ function showChiplessData() {
     chiplessBody.style("display", "block");
     // remove table when changing between chipped and chipless sections
     if (table != null)
-        table.remove();
+        removeTable();
+    // in case the chipless dropdowns are still displayed when switching tabs, hide them
+    if (chippedSetupsOptions.style("display") == "block")
+            chippedSetupsOptions.style("display", "none");
+    if (DPSOptions.style("display") == "block") {
+        DPSOptions.style("display", "none");
+        // there is no guarantee that the next setup has the same set of DPS units so we clear and recreate the list each time
+        // I am aware that I can use object pooling to be more resource efficient but I'm too lazy to do it properly
+        DPSOptions.selectAll("*").remove();
+    }
 }
 // add a section of text, header and body, to the specified html element body
 function addSection(body, headerText, bodyText) {
@@ -112,7 +131,7 @@ function toggleDPSDropdown() {
             DPSOptions.append("a")
                         .text(d)
                         .on("click", () => {
-                            showTable(filterDPS(d));
+                            showCSVTable(filterDPS(d));
                         });
         });
     }
@@ -120,6 +139,7 @@ function toggleDPSDropdown() {
     {
         DPSOptions.style("display", "none");
         // there is no guarantee that the next setup has the same set of DPS units so we clear and recreate the list each time
+        // I am aware that I can use object pooling to be more resource efficient but I'm too lazy to do it properly
         DPSOptions.selectAll("*").remove();
     }
 }
@@ -154,14 +174,64 @@ function filterDPS(dps) {
 }
 
 function removeTable() {
+    tableTitle.remove();
     table.remove();
 }
 
-function showTable(data = filteredData) {
+function showCSVTable(data = filteredData) {
     // delete previous table to update with new filter
     if (table != null)
-        table.remove();
+        removeTable();
+    // title of table
+    {
+        // assemble the string using the filtered data, all columns except DPS, damage, perc_damage have a single value if a setup is selected
+        // if a DPS is also selected then the DPS column will also only have a single value
+        var title = "";
+        // table is guaranteed to only have a single value when displayed regardless of selected setup
+        if (data[0].has_chip)
+            title += "Chipped ";
+        else
+            title += "Chipless ";
+        // check if a dps is selected or not and write down the name or blank if no dps was selected
+        var uniques = getUniquesInCol(data, "DPS");
+        if (uniques.length == 1)
+            title += uniques[0] + " ";
+        title += "DPS ";
+        // check if "all setups" has been selected or not by seeing if both formations are in the filtered dataset
+        uniques = getUniquesInCol(data, "formation");
+        if (uniques.length > 1) {
+            title += "All Setups ";
+        }
+        else {
+            title += data[0].tank + " ";
+            // if M16 is the tank, write down her equipment
+            if (data[0].tank == "M16") {
+                title += "SPEQ + ";
+                if (data[0].has_armor) 
+                    title += "Armor ";
+                else
+                    title += "T-Exo ";
+            } 
 
+            title += data[0].fairy + " ";
+            
+            if (data[0].formation == "b-formation")
+                title += "b-formation ";
+            else
+                title += "0-2 formation ";
+            // check if speed in setup is as low as possible or as high as possible
+            if (data[0].speed == 4)
+                title += "min speed ";
+            else
+                title += "max speed ";
+        }
+
+        title += "data";
+
+        tableTitle = d3.select("body").append("h2")
+                                        .text(title);
+    }
+    
     table = d3.select("body").append("table");
     // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
     table.selectAll("tr")
@@ -436,13 +506,12 @@ sectionBody = "<b>VFL is better in 0-2 formation</b> likely because the lowered 
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 }
-
-showChippedData();
 // divider for next section
 d3.select("body").append("hr");
 // header for chart section
 d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
+// chart section body
 {
     // holder of dropdown buttons
     const chartDropdownHolder = d3.select("body").append("div").style("display", "flex");
@@ -474,67 +543,67 @@ d3.select("body").append("h2")
                         .text("All setups")
                         .on("click", () => {
                             filterData(null, null, null, null, null, null, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*dmg1 Rescue Jill b-formation min speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*dmg1 Rescue Jill b-formation max speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*fervor mortar Jill b-formation min speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*fervor mortar Jill b-formation max speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.MORTAR, 0, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation min speed")
                         .on("click", () => {
                             filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation max speed")
                         .on("click", () => {
                             filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });  
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 1*cool lv100beach Jill b-formation min speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 1*cool lv100beach Jill b-formation max speed")
                         .on("click", () => {
                             filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 1*cool lv100beach Jill 0-2-formation min speed")
                         .on("click", () => {
                             filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
         chippedSetupsOptions.append("a")
                         .text("Chipped DPS m16 1*cool lv100beach Jill 0-2-formation max speed")
                         .on("click", () => {
                             filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
-                            showTable();
+                            showCSVTable();
                         });
     }         
     // chipless setups dropdown
@@ -545,187 +614,189 @@ d3.select("body").append("h2")
                                 .text("All setups")
                                 .on("click", () => {
                                     filterData(null, null, null, null, null, null, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*dmg1 Rescue Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*armor2 armor Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.ARMOR, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*fervor mortar Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*dmg1 rescue Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*armor2 armor Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.ARMOR, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*fervor mortar Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.MORTAR, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*dmg1 Rescue Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*fervor mortar Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*dmg1 rescue Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*fervor mortar Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.MORTAR, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 2*dmg2 lv31 beach Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv31 beach Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 2*dmg2 lv60 beach Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv60 beach Jill 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv78 beach only 0-2-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 1, 0, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv78 beach only b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 1, 0, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*dmg1 Rescue Jill b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv84 beach Jill b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 5*dmg1 rescue Jill 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*dmg1 Rescue Jill b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*dmg1 rescue Jill 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv89 beach Jill 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*fervor mortar Jill 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.MORTAR, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 5*fervor mortar Jill b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.MORTAR, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 2*dmg2 lv95 beach Jill b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Exo 2*dmg2 lv99 beach Jill 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.M16, 0, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv100 beach only b-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 0, 0, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("Shorty 2*dmg2 lv100 beach only 0-2-formation max speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_02, Fairies.BEACH, 0, 0, Tanks.SUPERSHORTY, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Armor 5*dmg1 Rescue Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
         chiplessSetupsOptions.append("a")
                                 .text("M16 SPEQ+Armor 1*cool lv100 beach Jill b-formation min speed")
                                 .on("click", () => {
                                     filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 0);
-                                    showTable();
+                                    showCSVTable();
                                 });
     }  
 }
+
+showChippedData();
