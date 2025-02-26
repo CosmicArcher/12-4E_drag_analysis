@@ -988,20 +988,17 @@ d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
 // table of average repair costs per run
 {
-    // hold title and chart display toggle
-    var repairTitleTab = d3.select("body").append("div")
-                                            .style("display", "flex");
-    repairTitleTab.append("h3")
-                    .text("Average Repair Cost of each Setup");
-    repairToggle = repairTitleTab.append("div")
+    // button to hide/display repair cost table
+    repairToggle = d3.select("body").append("div")
                     .attr("class", "box")
                     .attr("id", "repairToggle")
                     .on("click", () => {
                         toggleRepairTable();
                     });
-    repairToggle.text("Hide Repair Costs");
+    repairToggle.text("Hide Repair Costs");  
     // table base
     repairTableBody = d3.select("body").append("div");
+    repairTableBody.append("h3").text("Average Repair Cost of Each Setup");
     repairTable = repairTableBody.append("table");
     // table contents, swapped between which of chip and chipless summary is selected
     chippedRepairBody = repairTable.append("div");
