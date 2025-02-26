@@ -176,6 +176,9 @@ function addSection(body, headerText, bodyText) {
 }
 
 function toggleChartDropdown() {
+    // if dps dropdown is open, close it first
+    if (DPSOptions.style("display") == "block")
+        toggleDPSDropdown();
     // check if chip or chipless data is selected and show the dropdown options that correspond to it
     if (chippedBody.style("display") == "block") {
         if (chippedSetupsOptions.style("display") == "none")
@@ -192,6 +195,12 @@ function toggleChartDropdown() {
 }
 
 function toggleDPSDropdown() {
+    // if other dropdown is open, close it
+    if (chippedSetupsOptions.style("display") == "block")
+        chippedSetupsOptions.style("display", "none");
+    if (chiplessSetupsOptions.style("display") == "block")
+        chiplessSetupsOptions.style("display", "none");
+    
     if (DPSOptions.style("display") == "none") {
         DPSOptions.style("display", "block");
         // get DPS units tested in the selected setup
@@ -243,7 +252,7 @@ function filterData(formation = null, fairy = null, isminspeed = null, hg = null
 }
 
 function filterDPS(dps) {
-    return filteredData.filter(d => d.DPS.toLowerCase().match(dps));
+    return filteredData.filter(d => d.DPS.toLowerCase() == dps);
 }
 
 function getDPSData(data = filteredData) {
@@ -703,7 +712,9 @@ function showCSVTable(data = filteredData) {
     // table of damage taken and perc_damage with the setups
     dataTable = d3.select("body").append("table");
     // make different tables depending on whether it is all setups or not
-    if (getUniquesInCol(data, "formation").length > 1) {
+    if (getUniquesInCol(data, "formation").length > 1 || getUniquesInCol(data, "fairy").length > 1 || getUniquesInCol(data, "speed").length > 1 ||
+        getUniquesInCol(data, "has_HG").length > 1 || getUniquesInCol(data, "tank").length > 1 || getUniquesInCol(data, "tank").length > 1 ||
+        getUniquesInCol(data, "has_armor").length > 1) {
         var headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
         createTable(dataTable, headers, data);
     }
