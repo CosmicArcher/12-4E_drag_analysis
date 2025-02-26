@@ -39,7 +39,8 @@ var DPSOptions;
 
 var setupBoxplot;
 
-var chippedChartBodies = [];
+var maxChipPerc;
+var maxChiplessPerc;
 
 function getUniquesInCol(json, colKey) {
     var res = [];
@@ -62,6 +63,19 @@ function getIQRQuartile123(array) {
 
     return res;
 }   
+
+function getMaxPercDamage() {
+    var percData = [];
+    // chipped perc
+    csvData.filter(d => d.has_chip)
+            .forEach(d => percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1))));
+    maxChipPerc = Math.ceil(d3.quantile(percData, 1));
+    // chipless perc
+    percData.length = 0;
+    csvData.filter(d => !d.has_chip)
+            .forEach(d => percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1))));
+    maxChiplessPerc = Math.ceil(d3.quantile(percData, 1));
+}
 
 function toggleGFLDesc() {
     if (gflDescription.style("display") == "block") {
@@ -113,13 +127,6 @@ function addSection(body, headerText, bodyText) {
             .html(headerText);
     body.append("div")
             .html(bodyText);
-}
-
-function toggleChippedCharts(index) {
-    for (var i = 0; i < chippedChartBodies.length; i++) {
-        chippedChartBodies[i].style("display", "none");
-    }
-    chippedChartBodies[index].style("display", "block");
 }
 
 function toggleChartDropdown() {
@@ -286,13 +293,23 @@ function createSetupBoxAndWhisker(data = filteredData) {
     });
 
     var chart = anychart.box();
-    var series = chart.data(boxJSON);   
+    var series = chart.box(boxJSON);   
     // ugly fix to prevent the chart from being stuck at 100px
     var stage = anychart.graphics.create("container", "100%", 500);
-
+    // chart settings
     chart.title("Box and Whisker of Percentage Damage Taken");
     chart.container(stage);
     chart.yGrid().enabled(true);
+    if (data[0].has_chip)
+        chart.yScale().maximum(maxChipPerc);
+    else
+        chart.yScale().maximum(maxChiplessPerc);
+    // settings per box
+    series.normal().medianStroke("red", 1, "20 10", "round");
+    series.hovered().medianStroke("red", 1, "20 5", "round");
+    series.selected().medianStroke("red", 1, "20 5", "round");
+    series.whiskerWidth(50);
+
     chart.draw();
 }
 
@@ -411,7 +428,10 @@ d3.csv("12-4E_Dragger_Data.csv",
         };
     }).then(data => {
         csvData = data;
-        filteredData = data; //to cover edge case when using dps dropdown before selecting setups
+        // to cover edge case when using dps dropdown before selecting setups
+        filteredData = data; 
+        // get the max perc for both chip and chipless for box and whisker later
+        getMaxPercDamage();
     });
 // info for non-gfl players
 {
