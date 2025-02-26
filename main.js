@@ -28,7 +28,9 @@ var tableTitle;
 var filteredData;
 
 const repairHeaders = ["Setup", "MP_Cost", "Part_Cost", "Total_Rsc"];
+var repairToggle;
 var repairTable;
+var repairTableBody;
 var chippedRepairBody;
 var chiplessRepairBody;
 var chippedRepairData = [];
@@ -102,6 +104,19 @@ function toggleGFLDesc() {
         gflDescriptionToggle.text("Hide Game Basics");
         d3.select("#gfltoggle").style("background-color", "darkgray");
         gflDescription.style("display", "block");
+    }
+}
+
+function toggleRepairTable() {
+    if (repairTableBody.style("display") == "block") {
+        repairTableBody.style("display", "none");
+        repairToggle.text("Show Repair Costs");
+        repairToggle.style("background-color", "lightgray");
+    }
+    else {
+        repairTableBody.style("display", "block");
+        repairToggle.text("Hide Repair Costs");
+        repairToggle.style("background-color", "darkgray");
     }
 }
 
@@ -523,7 +538,7 @@ function createDPSHistogram(data = filteredData) {
     var histogram = d3.histogram()
                         .value(d => d)
                         .domain(x.domain())
-                        .thresholds(x.ticks(10));
+                        .thresholds(x.ticks(8));
     var bins = histogram(damageData);
     // create the y-axis
     y.domain([0, d3.max(bins, d => d.length)]);
@@ -973,11 +988,22 @@ d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
 // table of average repair costs per run
 {
-    d3.select("body").append("h3")
-                        .text("Average Repair Cost of each Setup");
-
-    repairTable = d3.select("body").append("table");
-    
+    // hold title and chart display toggle
+    var repairTitleTab = d3.select("body").append("div")
+                                            .style("display", "flex");
+    repairTitleTab.append("h3")
+                    .text("Average Repair Cost of each Setup");
+    repairToggle = repairTitleTab.append("div")
+                    .attr("class", "box")
+                    .attr("id", "repairToggle")
+                    .on("click", () => {
+                        toggleRepairTable();
+                    });
+    repairToggle.text("Hide Repair Costs");
+    // table base
+    repairTableBody = d3.select("body").append("div");
+    repairTable = repairTableBody.append("table");
+    // table contents, swapped between which of chip and chipless summary is selected
     chippedRepairBody = repairTable.append("div");
     chiplessRepairBody = repairTable.append("div");
     chiplessRepairBody.style("display", "none");
