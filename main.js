@@ -85,19 +85,26 @@ function getMaxPercDamage() {
 }
 
 function toggleGFLDesc() {
+    // change text and box color depending on toggle state for clarity on current toggle state
     if (gflDescription.style("display") == "block") {
         gflDescriptionToggle.text("Explain Game Basics");
+        d3.select("#gfltoggle").style("background-color", "lightgray")
         gflDescription.style("display", "none");
     }
     else {
         gflDescriptionToggle.text("Hide Game Basics");
+        d3.select("#gfltoggle").style("background-color", "darkgray");
         gflDescription.style("display", "block");
     }
 }
 
 function showChippedData() {
+    // swap which html body is displayed
     chippedBody.style("display", "block");
     chiplessBody.style("display", "none");
+    // darken box color of currently selected tab
+    d3.select("#postChip").style("background-color", "darkgray");
+    d3.select("#preChip").style("background-color", "lightgray");
     // switch displayed repair costs table
     chippedRepairBody.style("display", "block");
     chiplessRepairBody.style("display", "none");
@@ -116,8 +123,12 @@ function showChippedData() {
 }
 
 function showChiplessData() {
+    // swap which html body is displayed
     chippedBody.style("display", "none");
     chiplessBody.style("display", "block");
+    // darken box color of currently selected tab
+    d3.select("#postChip").style("background-color", "lightgray");
+    d3.select("#preChip").style("background-color", "darkgray");
     // switch displayed repair costs table
     chippedRepairBody.style("display", "none");
     chiplessRepairBody.style("display", "block");
@@ -515,7 +526,7 @@ function createSetupBoxAndWhisker(data = filteredData) {
     // ugly fix to prevent the chart from being stuck at 100px
     var stage = anychart.graphics.create("container", "100%", 500);
     // chart settings
-    chart.title("Box and Whisker of Percentage Damage Taken");
+    chart.title("Box and Whisker of Percentage of Max HP Damage Taken");
     chart.container(stage);
     chart.yGrid().enabled(true);
     if (data[0].has_chip)
@@ -660,7 +671,7 @@ d3.csv("12-4E_Dragger_Data.csv",
 {
 gflDescriptionToggle = d3.select("body").append("div")
                                         .attr("class", "box")
-                                        .attr("id", "gfl toggle")
+                                        .attr("id", "gfltoggle")
                                         .on("click", function() {toggleGFLDesc();});
 gflDescriptionToggle.text("Explain Game Basics");
 
@@ -732,12 +743,14 @@ const chipTabs = d3.select("body").append("div")
 // post-chip update is the default shown because it is the most up-to-date version of the game                                    
 chipTabs.append("div")
             .attr("class", "box")
+            .attr("id", "postChip")
             .text("Post-Chip Update")
             .on("click", function() {
                 showChippedData();
             });
 chipTabs.append("div")
             .attr("class", "box")
+            .attr("id", "preChip")
             .text("Pre-Chip Update")
             .on("click", function() {
                 showChiplessData();
