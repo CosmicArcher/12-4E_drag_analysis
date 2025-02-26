@@ -37,6 +37,8 @@ var chippedSetupsOptions;
 var chiplessSetupsOptions;
 var DPSOptions;
 
+var setupBoxplot;
+
 var chippedChartBodies = [];
 
 function getUniquesInCol(json, colKey) {
@@ -46,6 +48,20 @@ function getUniquesInCol(json, colKey) {
     
     return res.filter((d, i, a) => a.indexOf(d) == i);
 }
+
+function getIQRQuartile123(array) {
+    // return q1 - 1.5 iqr, q1, q2, q3, q3 + 1.5 iqr
+    var res = [0,0,0,0,0];
+    res[1] = d3.quantile(array, 0.25);
+    res[2] = d3.quantile(array, 0.5);
+    res[3] = d3.quantile(array, 0.75);
+    // get boundaries before a point is considered an outlier
+    var iqr = res[3] - res[1];
+    res[0] = Math.max(res[1] - 1.5 * iqr, d3.quantile(array,0));
+    res[4] = Math.min(res[3] + 1.5 * iqr, d3.quantile(array,1));
+
+    return res;
+}   
 
 function toggleGFLDesc() {
     if (gflDescription.style("display") == "block") {
@@ -177,9 +193,9 @@ function filterDPS(dps) {
     return filteredData.filter(d => d.DPS.toLowerCase().match(dps));
 }
 
-function widenSetupData(htmlBody, data = filteredData) {
+function getDPSData(data = filteredData) {
     var dpsList = getUniquesInCol(data, "DPS");
-    // store damage data in temporary arrays
+    // store damage data in a 2d array
     var dpsData = [];
     dpsList.forEach((d, i) => {
         //create 2 columns per dps, one for damage taken, the other for perc_damage
@@ -193,13 +209,20 @@ function widenSetupData(htmlBody, data = filteredData) {
             dpsData[i * 2 + 1].push(datum.perc_damage);
         });
     });
+    return dpsData;
+}
+
+function widenSetupData(htmlBody, data = filteredData) {
+    var dpsList = getUniquesInCol(data, "DPS");
+    
+    var dpsData = getDPSData(data);
     // get the largest amount of rows a single dps needs so that the other dps will have empty entries at the end to equalize their rows
     var largestSample = 0;
     for (var i = 0; i < dpsData.length; i += 2) {
         if (dpsData[i].length > largestSample)
             largestSample = dpsData[i].length;
     }
-    // store the json data
+    // store the data in a json
     var wideData = [];
     // establish the json per row
     for (var i = 0; i < largestSample; i++) {
@@ -229,6 +252,50 @@ function widenSetupData(htmlBody, data = filteredData) {
     createTable(htmlBody, headers, wideData);
 }
 
+function createSetupBoxAndWhisker(data = filteredData) {
+    var dpsList = getUniquesInCol(data, "DPS");
+    
+    var dpsData = getDPSData(data);
+    // get perc_damage and turn into float from string
+    var percData = [];
+    for (var i = 1; i < dpsData.length; i += 2) {
+        var colData = [];
+        dpsData[i].forEach(d => colData.push(Number(d.slice(0, d.length - 1))));
+        percData.push(colData);
+    }
+    // get information needed for box and whisker and place into a json
+    var boxJSON = [];
+    dpsList.forEach((d, i) => {
+        var newObj = {};
+        newObj["x"] = d;
+        // get critical points for box and whisker, using perc_damage
+        var thresholds = getIQRQuartile123(percData[i]);
+        newObj["low"] = thresholds[0];
+        newObj["q1"] = thresholds[1];
+        newObj["median"] = thresholds[2];
+        newObj["q3"] = thresholds[3];
+        newObj["high"] = thresholds[4];
+        // get outliers in the data
+        newObj["outliers"] = []
+        percData[i].forEach(d => {
+            if (d > thresholds[4] || d < thresholds[0])
+                newObj["outliers"].push(d);
+        });
+
+        boxJSON.push(newObj);
+    });
+
+    var chart = anychart.box();
+    var series = chart.data(boxJSON);   
+    // ugly fix to prevent the chart from being stuck at 100px
+    var stage = anychart.graphics.create("container", "100%", 500);
+
+    chart.title("Box and Whisker of Percentage Damage Taken");
+    chart.container(stage);
+    chart.yGrid().enabled(true);
+    chart.draw();
+}
+
 function createTable(htmlBody, tableHeaders, tableData) {
     // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
     htmlBody.selectAll("tr")
@@ -256,6 +323,7 @@ function createTable(htmlBody, tableHeaders, tableData) {
 
 function removeCSVTable() {
     tableTitle.remove();
+    setupBoxplot.remove();
     table.remove();
 }
 
@@ -311,17 +379,20 @@ function showCSVTable(data = filteredData) {
         tableTitle = d3.select("body").append("h2")
                                         .text(title);
     }
+
+    setupBoxplot = d3.select("body").append("div")
+                                    .attr("id", "container");
     
     table = d3.select("body").append("table");
-    var headers;
+    // make different tables depending on whether it is all setups or not
     if (getUniquesInCol(data, "formation").length > 1) {
-        headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
+        var headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
         createTable(table, headers, data);
     }
     else {
+        createSetupBoxAndWhisker(data);
         widenSetupData(table, data);
     }
-    
 }
 
 d3.csv("12-4E_Dragger_Data.csv",
