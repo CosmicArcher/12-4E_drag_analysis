@@ -65,23 +65,30 @@ function getIQRQuartile123(array) {
     res[3] = d3.quantile(array, 0.75);
     // get boundaries before a point is considered an outlier
     var iqr = res[3] - res[1];
-    res[0] = Math.max(res[1] - 1.5 * iqr, d3.quantile(array,0));
-    res[4] = Math.min(res[3] + 1.5 * iqr, d3.quantile(array,1));
+    res[0] = Math.max(res[1] - 1.5 * iqr, d3.min(array));
+    res[4] = Math.min(res[3] + 1.5 * iqr, d3.max(array));
 
     return res;
 }   
 
-function getMaxPercDamage() {
+function getMaxDamage() {
     var percData = [];
+    var flatData = [];
     // chipped perc
     csvData.filter(d => d.has_chip)
-            .forEach(d => percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1))));
-    maxChipPerc = Math.ceil(d3.quantile(percData, 1));
+            .forEach(d => {
+                percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1)));
+            });
+    // round the max to give margin for charts
+    maxChipPerc = Math.ceil(d3.max(percData));
     // chipless perc
     percData.length = 0;
     csvData.filter(d => !d.has_chip)
-            .forEach(d => percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1))));
-    maxChiplessPerc = Math.ceil(d3.quantile(percData, 1));
+            .forEach(d => {
+                percData.push(Number(d.perc_damage.slice(0, d.perc_damage.length - 1)));
+            });
+    // round the max to give margin for charts
+    maxChiplessPerc = Math.ceil(d3.max(percData));
 }
 
 function toggleGFLDesc() {
@@ -488,6 +495,56 @@ function widenSetupData(htmlBody, data = filteredData) {
     createTable(htmlBody, headers, wideData);
 }
 
+function createDPSHistogram(data = filteredData) {
+    var dpsData = getDPSData(data);
+    // get damage taken and turn into float from string
+    var damageData = [];
+    dpsData[0].forEach(d => damageData.push(+d));
+    // container for the histogram
+    var svg = setupBoxplot.append("svg")
+                            .attr("width", "100%")
+                            .attr("height", 500)
+                            .style("background-color", "white")
+                            .append("g")
+                            .attr("transform", "translate(30, 50)");
+    // set the x axis limit
+    var x = d3.scaleLinear()
+                .domain([0, Math.ceil((d3.max(damageData) + 5) / 10) * 10]) // add margin for x limit
+                .range([0, document.documentElement.clientWidth - 100]);
+    // set the x-axis labels on the bottom of the chart
+    svg.append("g")
+        .attr("transform", "translate(0, 420)")
+        .call(d3.axisBottom(x));
+    // set y-axis as bottom-up
+    var y = d3.scaleLinear()
+                .range([420, 0]);
+    var yAxis = svg.append("g");
+    // initialize histogram
+    var histogram = d3.histogram()
+                        .value(d => d)
+                        .domain(x.domain())
+                        .thresholds(x.ticks(10));
+    var bins = histogram(damageData);
+    // create the y-axis
+    y.domain([0, d3.max(bins, d => d.length)]);
+    yAxis.call(d3.axisLeft(y).ticks(d3.max(bins, d => d.length)));
+    // create a bar per histogram bin
+    svg.selectAll("rect")
+        .data(bins)
+        .join("rect")
+        .attr("transform", d => `translate(${x(d.x0)}, ${y(d.length)})`)
+        .attr("width", d => Math.max(x(d.x1) - x(d.x0) - 1, 0))
+        .attr("height", d => 420 - y(d.length))
+        .style("fill", "lightblue");
+    // create title
+    svg.append("text")
+        .text("Histogram of flat damage taken")
+        .attr("font-size", "25px")
+        .attr("text-anchor", "middle")
+        .attr("x", document.documentElement.clientWidth / 2)
+        .attr("y", -25);
+}
+
 function createSetupBoxAndWhisker(data = filteredData) {
     var dpsList = getUniquesInCol(data, "DPS");
     
@@ -636,7 +693,11 @@ function showCSVTable(data = filteredData) {
         createTable(dataTable, headers, data);
     }
     else {
-        createSetupBoxAndWhisker(data);
+        // create box and whisker of perc_damage taken if multiple dps is selected otherwise show histogram of flat damage taken
+        if (getUniquesInCol(data, "DPS").length > 1)
+            createSetupBoxAndWhisker(data);
+        else
+            createDPSHistogram(data);
         widenSetupData(dataTable, data);
     }
 }
@@ -660,7 +721,7 @@ d3.csv("12-4E_Dragger_Data.csv",
         // to cover edge case when using dps dropdown before selecting setups
         filteredData = data; 
         // get the max perc for both chip and chipless for box and whisker later
-        getMaxPercDamage();
+        getMaxDamage();
         // get the average repair costs
         getChippedRepairs();
         getChiplessRepairs();
