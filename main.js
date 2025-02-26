@@ -894,7 +894,6 @@ sectionBody = "For those unaware, sl9 duration increase pushes it over the thres
 addSection(chippedBody, sectionHeader, sectionBody);
 }
 }
-
 // body of chipless data findings
 {
 chiplessBody = d3.select("body").append("div");
@@ -983,6 +982,15 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // divider for next section
 d3.select("body").append("hr");
+// NOTE TO REDO THE DATA COMPARISON TO SOMETHING LESS SIMPLISTIC AS COMPARING AVERAGE, 1ST AND 3RD QUARTILES TO DETERMINE WHICH SETUP IS BETTER
+{
+    var headerText = "NOTICE: SETUP COMPARISON UNDER REWORK";
+    var bodyText = "Due to my lack of knowledge back when I first did this project, I determined which setup was better merely through comparing average " +
+                    "%HP loss and comparing their standard deviations. Now that I have better knowledge of statistics, I will revisit the comparisons over the " + 
+                    "next few weeks.";
+    addSection(d3.select("body"), headerText, bodyText);
+    d3.select("body").append("hr");
+}
 // header for chart section
 d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
