@@ -23,9 +23,16 @@ const Carry = {
 }
 
 var csvData;
-var table;
+var dataTable;
 var tableTitle;
 var filteredData;
+
+const repairHeaders = ["Setup", "MP_Cost", "Part_Cost", "Total_Rsc"];
+var repairTable;
+var chippedRepairBody;
+var chiplessRepairBody;
+var chippedRepairData = [];
+var chiplessRepairData = [];
 
 var gflDescriptionToggle;
 var gflDescription;
@@ -91,8 +98,11 @@ function toggleGFLDesc() {
 function showChippedData() {
     chippedBody.style("display", "block");
     chiplessBody.style("display", "none");
+    // switch displayed repair costs table
+    chippedRepairBody.style("display", "block");
+    chiplessRepairBody.style("display", "none");
     // remove table when changing between chipped and chipless sections
-    if (table != null) 
+    if (dataTable != null) 
         removeCSVTable();
     // in case the chipless dropdowns are still displayed when switching tabs, hide them
     if (chiplessSetupsOptions.style("display") == "block")
@@ -108,8 +118,11 @@ function showChippedData() {
 function showChiplessData() {
     chippedBody.style("display", "none");
     chiplessBody.style("display", "block");
+    // switch displayed repair costs table
+    chippedRepairBody.style("display", "none");
+    chiplessRepairBody.style("display", "block");
     // remove table when changing between chipped and chipless sections
-    if (table != null)
+    if (dataTable != null)
         removeCSVTable();
     // in case the chipless dropdowns are still displayed when switching tabs, hide them
     if (chippedSetupsOptions.style("display") == "block")
@@ -217,6 +230,211 @@ function getDPSData(data = filteredData) {
         });
     });
     return dpsData;
+}
+
+function insertSetupRepairsJSON(json, setupText, data = filteredData) {
+    var dpsData;
+    var dpsList;
+    // get the average repair costs of each dps
+    dpsList = getUniquesInCol(data, "DPS");
+    dpsData = getDPSData(data);
+    // get perc_damage and turn into float from string and calculate average
+    var percAverage = [];
+    for (var i = 1; i < dpsData.length; i += 2) {
+        var colSum = 0;
+        dpsData[i].forEach(d => colSum += Number(d.slice(0, d.length - 1)));
+        percAverage.push(colSum / dpsData[i].length);
+    }
+    // assemble the json
+    dpsList.forEach((d, i) => {
+        var newObj = {};
+        newObj["Setup"] = setupText + " " + d;
+        // repair cost differs between AR (M16) and SGs (Super Shorty)
+        if (data[0].tank == "M16") {
+            newObj["MP_Cost"] = (percAverage[i] * 0.3 * 4).toFixed(2);
+            newObj["Part_Cost"] = (percAverage[i] * 0.3 * 1.4).toFixed(2);
+            // weigh parts as 3 times that of manpower in line with natural regeneration
+            newObj["Total_Rsc"] = (percAverage[i] * 0.3 * 8.2).toFixed(2);
+        }
+        else {
+            newObj["MP_Cost"] = (percAverage[i] * 0.3 * 6.5).toFixed(2);
+            newObj["Part_Cost"] = (percAverage[i] * 0.3 * 3.2).toFixed(2);
+            // weigh parts as 3 times that of manpower in line with natural regeneration
+            newObj["Total_Rsc"] = (percAverage[i] * 0.3 * 16.1).toFixed(2);
+        }
+        json.push(newObj);
+    });
+}
+
+function getChippedRepairs() {
+    var setup;
+    // since each setup will repeat the steps and there are more than 30 setups, put it all into a function to save space
+    {
+        setup = "Chipped DPS m16 5*dmg1 Rescue Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 5*dmg1 Rescue Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 5*fervor mortar Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 5*fervor mortar Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.MORTAR, 0, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 5*dmg1 rescue Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 1*cool lv100beach Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 1*cool lv100beach Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 1*cool lv100beach Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+
+        setup = "Chipped DPS m16 1*cool lv100beach Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.M16, 1, null, 1);
+        insertSetupRepairsJSON(chippedRepairData, setup, filteredData);
+    }    
+}
+
+function getChiplessRepairs() {
+    var setup;
+    {
+        setup = "M16 SPEQ+Exo 5*dmg1 Rescue Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*armor2 armor Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.ARMOR, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*fervor mortar Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*dmg1 rescue Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*armor2 armor Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.ARMOR, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*fervor mortar Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.MORTAR, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*dmg1 Rescue Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*fervor mortar Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.MORTAR, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*dmg1 rescue Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*fervor mortar Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.MORTAR, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 2*dmg2 lv31 beach Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+ 
+        setup = "Shorty 2*dmg2 lv31 beach Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 2*dmg2 lv60 beach Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv60 beach Jill 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 1, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv78 beach only 0-2-formation min speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 1, 0, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv78 beach only b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 1, 0, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*dmg1 Rescue Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv84 beach Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 5*dmg1 rescue Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*dmg1 Rescue Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*dmg1 rescue Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.RESCUE, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv89 beach Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*fervor mortar Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.MORTAR, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 5*fervor mortar Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.MORTAR, 0, 1, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 2*dmg2 lv95 beach Jill b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 0, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Exo 2*dmg2 lv99 beach Jill 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 0, 1, Tanks.M16, 0, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv100 beach only b-formation max speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 0, 0, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "Shorty 2*dmg2 lv100 beach only 0-2-formation max speed";
+        filterData(Formations.Formation_02, Fairies.BEACH, 0, 0, Tanks.SUPERSHORTY, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Armor 5*dmg1 Rescue Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+
+        setup = "M16 SPEQ+Armor 1*cool lv100 beach Jill b-formation min speed";
+        filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 0);
+        insertSetupRepairsJSON(chiplessRepairData, setup, filteredData);
+    }
 }
 
 function widenSetupData(htmlBody, data = filteredData) {
@@ -341,12 +559,12 @@ function createTable(htmlBody, tableHeaders, tableData) {
 function removeCSVTable() {
     tableTitle.remove();
     setupBoxplot.remove();
-    table.remove();
+    dataTable.remove();
 }
 
 function showCSVTable(data = filteredData) {
     // delete previous table to update with new filter
-    if (table != null)
+    if (dataTable != null)
         removeCSVTable();
     // title of table
     {
@@ -399,16 +617,16 @@ function showCSVTable(data = filteredData) {
 
     setupBoxplot = d3.select("body").append("div")
                                     .attr("id", "container");
-    
-    table = d3.select("body").append("table");
+    // table of damage taken and perc_damage with the setups
+    dataTable = d3.select("body").append("table");
     // make different tables depending on whether it is all setups or not
     if (getUniquesInCol(data, "formation").length > 1) {
         var headers = ["formation", "fairy", "speed", "has_HG", "tank", "has_armor", "DPS", "damage", "perc_damage"];
-        createTable(table, headers, data);
+        createTable(dataTable, headers, data);
     }
     else {
         createSetupBoxAndWhisker(data);
-        widenSetupData(table, data);
+        widenSetupData(dataTable, data);
     }
 }
 
@@ -432,6 +650,11 @@ d3.csv("12-4E_Dragger_Data.csv",
         filteredData = data; 
         // get the max perc for both chip and chipless for box and whisker later
         getMaxPercDamage();
+        // get the average repair costs
+        getChippedRepairs();
+        getChiplessRepairs();
+        createTable(chippedRepairBody, repairHeaders, chippedRepairData);
+        createTable(chiplessRepairBody, repairHeaders, chiplessRepairData);
     });
 // info for non-gfl players
 {
@@ -674,7 +897,21 @@ d3.select("body").append("hr");
 // header for chart section
 d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
-// chart section body
+// table of average repair costs per run
+{
+    d3.select("body").append("h3")
+                        .text("Average Repair Cost of each Setup");
+
+    repairTable = d3.select("body").append("table");
+    
+    chippedRepairBody = repairTable.append("div");
+    chiplessRepairBody = repairTable.append("div");
+    chiplessRepairBody.style("display", "none");
+}
+// header for chart section
+d3.select("body").append("h3")
+                    .text("View Specific Setup");
+// data charts body
 {
     // holder of dropdown buttons
     const chartDropdownHolder = d3.select("body").append("div").style("display", "flex");
