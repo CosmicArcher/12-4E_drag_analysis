@@ -23,6 +23,7 @@ const Carry = {
 }
 
 var csvData;
+var tableHolder;
 var dataTable;
 var tableTitle;
 var filteredData;
@@ -703,14 +704,14 @@ function showCSVTable(data = filteredData) {
 
         title += "data";
 
-        tableTitle = d3.select("body").append("h2")
+        tableTitle = tableHolder.append("h2")
                                         .text(title);
     }
 
-    setupBoxplot = d3.select("body").append("div")
+    setupBoxplot = tableHolder.append("div")
                                     .attr("id", "container");
     // table of damage taken and perc_damage with the setups
-    dataTable = d3.select("body").append("table");
+    dataTable = tableHolder.append("table");
     // make different tables depending on whether it is all setups or not
     if (getUniquesInCol(data, "formation").length > 1 || getUniquesInCol(data, "fairy").length > 1 || getUniquesInCol(data, "speed").length > 1 ||
         getUniquesInCol(data, "has_HG").length > 1 || getUniquesInCol(data, "tank").length > 1 || getUniquesInCol(data, "tank").length > 1 ||
@@ -1030,7 +1031,7 @@ d3.select("body").append("h3")
 // data charts body
 {
     // holder of dropdown buttons
-    const chartDropdownHolder = d3.select("body").append("div").style("display", "flex");
+    const chartDropdownHolder = d3.select("body").append("div").attr("class", "tabs");
     // button to show setup dropdown
     const setupDropdown = chartDropdownHolder.append("div")
                 .attr("class", "box")
@@ -1043,7 +1044,6 @@ d3.select("body").append("h3")
     // button to show dps dropdown     
     const DPSDropdown = chartDropdownHolder.append("div")
                 .attr("class", "box")
-                .style("float", "right")
                 .text("Tested DPS")
                 .on("click", function() {
                     toggleDPSDropdown();
@@ -1314,5 +1314,7 @@ d3.select("body").append("h3")
                                 });
     }  
 }
+
+tableHolder = d3.select("body").append("div");
 
 showChippedData();
