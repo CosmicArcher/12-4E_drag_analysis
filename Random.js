@@ -1,8 +1,8 @@
 // Linear Congruential Random Number Generator
 // javascript random number generator does not have the ability to set a seed which hurts reproduceability
-let mod = 2**31;
-let a = 22695477;
-let c = 1;
+const mod = 2**31;
+const a = 22695477;
+const c = 1;
 let randSeed = 0;
 class Random {
     constructor() {

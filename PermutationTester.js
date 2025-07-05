@@ -78,7 +78,6 @@ class PermutationTester {
             
             // get the test statistic for the original two datasets
             let observedTestStat = PermutationTesterSingleton.calculateStatistic(data1, data2, mode);
-            
             let testStats = [];
             // start shuffling the entries in both datasets with each other, do it {num_permutations} times since fully covering 
             for (let i = 0; i < num_permutations; i++) {
@@ -105,9 +104,9 @@ class PermutationTester {
             }
             // get p-value based on percentage of testStats that are less than or greater than to the observed test statistic depending on which sided test is set
             if (isLeftSide)
-                return testStats.reduce((sum, d) => sum + d < observedTestStat) / num_permutations;
+                return testStats.reduce((sum, d) => sum + (d < observedTestStat), 0) / num_permutations;
             else
-                return testStats.reduce((sum, d) => sum + d > observedTestStat) / num_permutations;
+                return testStats.reduce((sum, d) => sum + (d > observedTestStat), 0) / num_permutations;
         }
         else
             console.error("Singleton does not exist");
@@ -127,18 +126,23 @@ class PermutationTester {
                     let sorted1 = data1.sort((a, b) => a - b);
                     let sorted2 = data2.sort((a, b) => a - b);
                     // get the difference of the ECDFs between the two datasets
+                    let combinedData = [];
+                    for (let i = 0; i < size1; i++)
+                        combinedData.push(data1[i]);
+                    for (let i = 0; i < size2; i++)
+                        combinedData.push(data2[i]);
                     let ecdiff = [];
                     combinedData.forEach(data => {
                         ecdiff.push(Math.abs(ecdf(sorted1, data) - ecdf(sorted2, data)));
                     });
                     // the test statistic of the KS test is the supremum of the differences between the two ECDFs 
-                    return Math.max(ecdiff);
+                    return d3.max(ecdiff);
                 case TestModes.STDDEV:
                     let mean1 = data1.reduce((sum, d) => sum + d) / size1;
                     let mean2 = data2.reduce((sum, d) => sum + d) / size2;
                     // get the variances of the two datasets
-                    let var1 = data1.reduce((sum, d) => sum + (d - mean1) ** 2)  / (size1 - 1);
-                    let var2 = data2.reduce((sum, d) => sum + (d - mean2) ** 2)  / (size2 - 1);
+                    let var1 = data1.reduce((sum, d) => sum + (d - mean1) ** 2, 0)  / (size1 - 1);
+                    let var2 = data2.reduce((sum, d) => sum + (d - mean2) ** 2, 0)  / (size2 - 1);
                     return Math.sqrt(var1) - Math.sqrt(var2);
                 default: 
                     console.error(`${mode} is not a valid test mode`);

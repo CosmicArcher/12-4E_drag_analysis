@@ -1,3 +1,6 @@
+import Random from "./Random.js";
+import PermutationTester, { TestModes } from "./PermutationTester.js";
+
 const Formations = {
     Formation_b : "b-formation",
     Formation_02 : "0-2-formation"
@@ -20,6 +23,15 @@ const Carry = {
     K11: "k11",
     UZI: "uzi",
     SOP: "sop"
+}
+
+const Comparison = {
+    Exo_Armor : "Exo_Armor",
+    Formation : "Formation",
+    Speed : "Speed",
+    Tank : "Tank",
+    Equip : "Equip",
+    Uzi : "Uzi"
 }
 
 var csvData;
@@ -47,10 +59,17 @@ var chippedSetupsOptions;
 var chiplessSetupsOptions;
 var DPSOptions;
 
+var chippedComparisonOptions;
+var chiplessComparisonOptions;
+
 var setupBoxplot;
 
 var maxChipPerc;
 var maxChiplessPerc;
+
+const numPermutations = 10000;
+
+var pTableBody;
 
 function getUniquesInCol(json, colKey) {
     var res = [];
@@ -227,6 +246,31 @@ function toggleDPSDropdown() {
     }
 }
 
+function toggleComparisonDropdown() {
+    // if dps dropdown is open, close it first
+    if (DPSOptions.style("display") == "block")
+        toggleDPSDropdown();
+    // if setup chart dropdown is open, close it
+    if (chippedSetupsOptions.style("display") == "block")
+        chippedSetupsOptions.style("display", "none");
+    if (chiplessSetupsOptions.style("display") == "block")
+        chiplessSetupsOptions.style("display", "none");
+
+    // check if chip or chipless data is selected and show the dropdown options that correspond to it
+    if (chippedBody.style("display") == "block") {
+        if (chippedComparisonOptions.style("display") == "none")
+            chippedComparisonOptions.style("display", "block");
+        else
+            chippedComparisonOptions.style("display", "none");
+    }
+    else {
+        if (chiplessComparisonOptions.style("display") == "none")
+            chiplessComparisonOptions.style("display", "block");
+        else
+            chiplessComparisonOptions.style("display", "none");
+    }
+}
+
 function filterData(formation = null, fairy = null, isminspeed = null, hg = null, tank = null, armor = null, dps = null, chip = null) {
     filteredData = csvData;
     if (formation != null)
@@ -239,11 +283,11 @@ function filterData(formation = null, fairy = null, isminspeed = null, hg = null
         filteredData = filteredData.filter(d => d.tank.match(tank));
     if (armor != null)
         filteredData = filteredData.filter(d => d.has_armor == armor);
+    //DPS is lower cased because of an inconsistency in the data for one of the names starting with a capital letter when all other names are fully lowercase
     if (dps != null)
         filteredData = filteredData.filter(d => d.DPS.toLowerCase().match(dps));
     if (chip != null)
         filteredData = filteredData.filter(d => d.has_chip == chip);
-//DPS is lower cased because of an inconsistency in the data for one of the names starting with a capital letter when all other names are fully lowercase
     if (isminspeed) {
         filteredData = filteredData.filter(d => d.speed == 4);
     }
@@ -624,7 +668,7 @@ function createSetupBoxAndWhisker(data = filteredData) {
     chart.draw();
 }
 
-function createTable(htmlBody, tableHeaders, tableData) {
+function createTable(htmlBody, tableHeaders, tableData, hasPVal = false, twoSided = false, pVal = 0.05) {
     // set up data first then add headers to avoid clunkiness of d3 .data .append when creating a table
     htmlBody.selectAll("tr")
         .data(tableData)
@@ -639,7 +683,16 @@ function createTable(htmlBody, tableHeaders, tableData) {
         })
         .enter()
         .append("td")
-        .text(d => d);
+        .text(d => d)
+        .style("background-color", d => {
+            if (hasPVal) {
+                if (d <= pVal)
+                    return "green";
+                if (twoSided && d >= 1 - pVal)
+                    return "aqua";
+            }
+            return "";
+        });
     // use insert before first tr to create the header
     htmlBody.insert("tr", "tr")
         .selectAll("th")
@@ -727,6 +780,633 @@ function showCSVTable(data = filteredData) {
             createDPSHistogram(data);
         widenSetupData(dataTable, data);
     }
+}
+
+function compareSetupDPS(data1, dpsList1, data2, dpsList2, testMode = TestModes.MEAN) {
+    // set the seed to make the results reproducible
+    Random.setSeed(12345);
+    // get only the dps that both datasets share for a fair comparison
+    let sharedDPS = [];
+    for (let i = 0; i < dpsList1.length; i++)  {
+        let isShared = false;
+        for (let j = 0; j < dpsList2.length && !isShared; j++) {
+            if (dpsList1[i] == dpsList2[j]) {
+                sharedDPS.push(dpsList1[i]);
+                isShared = true;
+            }
+        }
+    }
+
+    let pValues = {};
+    for (let i = 0; i < sharedDPS.length; i++) {
+        let dmgArray1 = data1[dpsList1.indexOf(sharedDPS[i]) * 2];
+        let dmgArray2 = data2[dpsList2.indexOf(sharedDPS[i]) * 2];
+        // get the left-side p-values of non KS test
+        pValues[sharedDPS[i]] = PermutationTester.getInstance().performTest(dmgArray1, dmgArray2, testMode, numPermutations, testMode != TestModes.KSTEST);
+    }
+
+    return pValues;
+}
+
+function compareSpecificDPS(data1, data2, testMode = TestModes.MEAN) {
+    // set the seed to make the results reproducible
+    Random.setSeed(12345);
+    // get the left-side p-values of non KS test
+    return PermutationTester.getInstance().performTest(data1, data2, testMode, numPermutations, testMode != TestModes.KSTEST);
+}
+
+function createComparisonSection(compare = Comparison.Exo_Armor) {
+    // comparison will only be with chipped or chipless data depending on which one is currently displayed
+    let chipFiltered;
+    let chipText;
+    if (chippedBody.style("display") == "block") {
+        chipFiltered = csvData.filter(d => d.has_chip);
+        chipText = "Chipped DPS ";
+    }
+    else {
+        chipFiltered = csvData.filter(d => !d.has_chip);
+        chipText = "Chipless DPS ";
+    }
+    
+    let res = {};
+    switch (compare) {
+        case Comparison.Exo_Armor:
+            filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 0, null, 0);
+            let testedDPS1 = getUniquesInCol(filteredData, "DPS");
+            let data1 = getDPSData();
+            filterData(Formations.Formation_b, Fairies.RESCUE, 1, 1, Tanks.M16, 1, null, 0);
+            let testedDPS2 = getUniquesInCol(filteredData, "DPS");
+            let data2 = getDPSData();
+            
+            // for the case where all chips setup has some uzi entries with capital letters while the rest are all lowercase
+            testedDPS1.forEach((d, i) => testedDPS1[i] = d.toLowerCase());
+            testedDPS1 = testedDPS1.filter((d, i, a) => a.indexOf(d) == i);
+            // for the case where all chips setup has some uzi entries with capital letters while the rest are all lowercase
+            testedDPS2.forEach((d, i) => testedDPS2[i] = d.toLowerCase());
+            testedDPS2 = testedDPS2.filter((d, i, a) => a.indexOf(d) == i);
+
+            res["chipless b-Formation Rescue min speed"] = {};
+            res["chipless b-Formation Rescue min speed"][TestModes.MEAN] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.MEAN);
+            res["chipless b-Formation Rescue min speed"][TestModes.STDDEV] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.STDDEV);
+            res["chipless b-Formation Rescue min speed"][TestModes.KSTEST] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.KSTEST);
+            console.log(Object.values(res["chipless b-Formation Rescue min speed"]));
+
+            filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
+            testedDPS1 = getUniquesInCol(filteredData, "DPS");
+            data1 = getDPSData();
+            filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 1, null, 0);
+            testedDPS2 = getUniquesInCol(filteredData, "DPS");
+            data2 = getDPSData();
+            
+            // for the case where all chips setup has some uzi entries with capital letters while the rest are all lowercase
+            testedDPS1.forEach((d, i) => testedDPS1[i] = d.toLowerCase());
+            testedDPS1 = testedDPS1.filter((d, i, a) => a.indexOf(d) == i);
+            // for the case where all chips setup has some uzi entries with capital letters while the rest are all lowercase
+            testedDPS2.forEach((d, i) => testedDPS2[i] = d.toLowerCase());
+            testedDPS2 = testedDPS2.filter((d, i, a) => a.indexOf(d) == i);
+
+            res["chipless b-Formation Beach min speed"] = {};
+            res["chipless b-Formation Beach min speed"][TestModes.MEAN] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.MEAN);
+            res["chipless b-Formation Beach min speed"][TestModes.STDDEV] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.STDDEV);
+            res["chipless b-Formation Beach min speed"][TestModes.KSTEST] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.KSTEST);
+            console.log(Object.values(res["chipless b-Formation Beach min speed"]));
+
+            createPTable(res, 0.05);
+            break;
+        case Comparison.Formation:
+            // iterate through all setups by going through all combinations of filtering the data outside of the variable of interest where they will be separated
+            // into different datasets and DPS as that will be handled later
+            let bFormation = chipFiltered.filter(d => d.formation == Formations.Formation_b);
+            let zerotwo = chipFiltered.filter(d => d.formation == Formations.Formation_02);
+            // slowly create the setup name as we go through each possible filter
+            Object.values(Fairies).forEach(fairy => {
+                let fairyFilteredb = bFormation.filter(d => d.fairy.match(fairy));
+                let fairyFiltered02 = zerotwo.filter(d => d.fairy.match(fairy));
+                let fairyText = fairy + " ";
+                // only continue if both filtered datasets have remaining rows
+                if (fairyFilteredb.length > 0 && fairyFiltered02.length > 0) {
+                    // filter speed next
+                    for (let i = 0; i < 2; i++) {
+                        let ibool = i ? true : false;
+                        let speedFilteredb = fairyFilteredb.filter(d => (d.speed == 4) != ibool);
+                        let speedFiltered02 = fairyFiltered02.filter(d => (d.speed == 4) != ibool);
+                        let speedText = ibool ? "max speed " : "min speed ";
+                        // filter hg presence next
+                        if (speedFilteredb.length > 0 && speedFiltered02.length > 0) {
+                            for (let j = 0; j < 2; j++) {
+                                let jbool = j ? true : false;
+                                let hgFilteredb = speedFilteredb.filter(d => d.has_HG == jbool);
+                                let hgFiltered02 = speedFiltered02.filter(d => d.has_HG == jbool);
+                                let hgText = jbool ? "Jill " : "only ";
+                                if (hgFilteredb.length > 0 && hgFiltered02.length > 0) {
+                                    Object.values(Tanks).forEach(tank => {
+                                        let tankFilteredb = hgFilteredb.filter(d => d.tank.match(tank));
+                                        let tankFiltered02 = hgFiltered02.filter(d => d.tank.match(tank));
+                                        let tankText = tank + " ";
+                                        // filter armor next
+                                        if (tankFilteredb.length > 0 && tankFiltered02.length > 0) {
+                                            for (let k = 0; k < 2; k++) {
+                                                let kbool = k ? true : false;
+                                                let armorFilteredb = tankFilteredb.filter(d => d.has_armor == kbool);
+                                                let armorFiltered02 = tankFiltered02.filter(d => d.has_armor == kbool);
+                                                let armorText = "";
+                                                if (tank == Tanks.M16) {
+                                                    armorText = kbool ? "SPEQ+Armor " : "SPEQ+T-Exo ";
+                                                }
+                                                if (armorFilteredb.length > 0 && armorFiltered02.length > 0) {
+                                                    let bDPS = getUniquesInCol(armorFilteredb, "DPS");
+                                                    let zerotwoDPS = getUniquesInCol(armorFiltered02, "DPS");
+                                                    let bData = getDPSData(armorFilteredb);
+                                                    let zerotwoData = getDPSData(armorFiltered02);
+                                                    bDPS.forEach((d, index) => bDPS[index] = d.toLowerCase());
+                                                    bDPS = bDPS.filter((d, index, a) => a.indexOf(d) == index);
+                                                    zerotwoDPS.forEach((d, index) => zerotwoDPS[index] = d.toLowerCase());
+                                                    zerotwoDPS = zerotwoDPS.filter((d, index, a) => a.indexOf(d) == index); 
+                                                    // assemble the text given to the setup name for the table
+                                                    let finalText = chipText + tankText + armorText + fairyText + hgText + speedText;
+                                                    res[finalText] = {};
+                                                    // get the p-values of the setup for each dps and for each test statistic type
+                                                    Object.values(TestModes).forEach(testMode => {
+                                                        res[finalText][testMode] = compareSetupDPS(bData, bDPS, zerotwoData, zerotwoDPS, testMode);
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            createPTable(res, 0.05);
+            break;
+        case Comparison.Speed:
+            let minSpeed = chipFiltered.filter(d => d.speed == 4);
+            let maxSpeed = chipFiltered.filter(d => d.speed > 4);
+            // slowly create the setup name as we go through each possible filter
+            Object.values(Fairies).forEach(fairy => {
+                let fairyFilteredmin = minSpeed.filter(d => d.fairy.match(fairy));
+                let fairyFilteredmax = maxSpeed.filter(d => d.fairy.match(fairy));
+                let fairyText = fairy + " ";
+                // only continue if both filtered datasets have remaining rows
+                if (fairyFilteredmin.length > 0 && fairyFilteredmax.length > 0) {
+                    // filter formation next
+                    for (let i = 0; i < 2; i++) {
+                        let ibool = i ? true : false;
+                        let formationFilteredmin = fairyFilteredmin.filter(d => (d.formation == Formations.Formation_b) == ibool);
+                        let formationFilteredmax = fairyFilteredmax.filter(d => (d.formation == Formations.Formation_b) == ibool);
+                        let formationText = ibool ? "b-formation " : "0-2 formation ";
+                        // filter hg presence next
+                        if (formationFilteredmin.length > 0 && formationFilteredmax.length > 0) {
+                            for (let j = 0; j < 2; j++) {
+                                let jbool = j ? true : false;
+                                let hgFilteredmin = formationFilteredmin.filter(d => d.has_HG == jbool);
+                                let hgFilteredmax = formationFilteredmax.filter(d => d.has_HG == jbool);
+                                let hgText = jbool ? "Jill " : "only ";
+                                if (hgFilteredmin.length > 0 && hgFilteredmax.length > 0) {
+                                    Object.values(Tanks).forEach(tank => {
+                                        let tankFilteredmin = hgFilteredmin.filter(d => d.tank.match(tank));
+                                        let tankFilteredmax = hgFilteredmax.filter(d => d.tank.match(tank));
+                                        let tankText = tank + " ";
+                                        // filter armor next
+                                        if (tankFilteredmin.length > 0 && tankFilteredmax.length > 0) {
+                                            for (let k = 0; k < 2; k++) {
+                                                let kbool = k ? true : false;
+                                                let armorFilteredmin = tankFilteredmin.filter(d => d.has_armor == kbool);
+                                                let armorFilteredmax = tankFilteredmax.filter(d => d.has_armor == kbool);
+                                                let armorText = "";
+                                                if (tank == Tanks.M16) {
+                                                    armorText = kbool ? "SPEQ+Armor " : "SPEQ+T-Exo ";
+                                                }
+                                                if (armorFilteredmin.length > 0 && armorFilteredmax.length > 0) {
+                                                    let minDPS = getUniquesInCol(armorFilteredmin, "DPS");
+                                                    let maxDPS = getUniquesInCol(armorFilteredmax, "DPS");
+                                                    let minData = getDPSData(armorFilteredmin);
+                                                    let maxData = getDPSData(armorFilteredmax);
+                                                    minDPS.forEach((d, index) => minDPS[index] = d.toLowerCase());
+                                                    minDPS = minDPS.filter((d, index, a) => a.indexOf(d) == index);
+                                                    maxDPS.forEach((d, index) => maxDPS[index] = d.toLowerCase());
+                                                    maxDPS = maxDPS.filter((d, index, a) => a.indexOf(d) == index); 
+                                                    // assemble the text given to the setup name for the table
+                                                    let finalText = chipText + tankText + armorText + fairyText + hgText + formationText;
+                                                    res[finalText] = {};
+                                                    // get the p-values of the setup for each dps and for each test statistic type
+                                                    Object.values(TestModes).forEach(testMode => {
+                                                        res[finalText][testMode] = compareSetupDPS(minData, minDPS, maxData, maxDPS, testMode);
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            createPTable(res, 0.05);
+            break;
+        case Comparison.Tank:
+            let m16Tank = chipFiltered.filter(d => d.tank.match(Tanks.M16));
+            let shortyTank = chipFiltered.filter(d => d.tank.match(Tanks.SUPERSHORTY));
+            // slowly create the setup name as we go through each possible filter
+            Object.values(Fairies).forEach(fairy => {
+                let fairyFilteredm16 = m16Tank.filter(d => d.fairy.match(fairy));
+                let fairyFilteredshorty = shortyTank.filter(d => d.fairy.match(fairy));
+                let fairyText = fairy + " ";
+                // only continue if both filtered datasets have remaining rows
+                if (fairyFilteredm16.length > 0 && fairyFilteredshorty.length > 0) {
+                    // filter formation next
+                    for (let i = 0; i < 2; i++) {
+                        let ibool = i ? true : false;
+                        let formationFilteredm16 = fairyFilteredm16.filter(d => (d.formation == Formations.Formation_b) == ibool);
+                        let formationFilteredshorty = fairyFilteredshorty.filter(d => (d.formation == Formations.Formation_b) == ibool);
+                        let formationText = ibool ? "b-formation " : "0-2 formation ";
+                        // filter hg presence next
+                        if (formationFilteredm16.length > 0 && formationFilteredshorty.length > 0) {
+                            for (let j = 0; j < 2; j++) {
+                                let jbool = j ? true : false;
+                                let hgFilteredm16 = formationFilteredm16.filter(d => d.has_HG == jbool);
+                                let hgFilteredshorty = formationFilteredshorty.filter(d => d.has_HG == jbool);
+                                let hgText = jbool ? "Jill " : "only ";
+                                if (hgFilteredm16.length > 0 && hgFilteredshorty.length > 0) {
+                                    for (let l = 0; l < 2; l++) {
+                                        let lbool = l ? true : false;
+                                        let speedFilteredm16 = hgFilteredm16.filter(d => (d.speed == 4) != lbool);
+                                        let speedFilteredshorty = hgFilteredshorty.filter(d => (d.speed == 4) != lbool);
+                                        let speedText = lbool ? "max speed " : "min speed ";
+                                        // filter armor next
+                                        if (speedFilteredm16.length > 0 && speedFilteredshorty.length > 0) {
+                                            for (let k = 0; k < 2; k++) {
+                                                let kbool = k ? true : false;
+                                                let armorFilteredm16 = speedFilteredm16.filter(d => d.has_armor == kbool);
+                                                // shorty always has armor
+                                                let armorFilteredshorty = speedFilteredshorty;
+                                                if (armorFilteredm16.length > 0 && armorFilteredshorty.length > 0) {
+                                                    let m16DPS = getUniquesInCol(armorFilteredm16, "DPS");
+                                                    let shortyDPS = getUniquesInCol(armorFilteredshorty, "DPS");
+                                                    let m16Data = getDPSData(armorFilteredm16);
+                                                    let shortyData = getDPSData(armorFilteredshorty);
+                                                // convert data to repair cost as that is what we are using to compare rather than damage taken as SGs have a
+                                                // different formula for repair costs and that is the main consideration for tanks, how much resources are used per run
+                                                    for (let n = 0; n < m16Data.length / 2; n++) {
+                                                        for (let m = 0; m < m16Data[n * 2].length; m++) {
+                                                            m16Data[n*2][m] = +(+m16Data[n*2+1][m].slice(0, m16Data[n*2+1][m].length - 1) * 0.3 * 8.2).toFixed(2);
+                                                        }
+                                                    }
+                                                    for (let n = 0; n < shortyData.length / 2; n++) {
+                                                        for (let m = 0; m < shortyData[n * 2].length; m++) {
+                                                            shortyData[n*2][m] = +(+shortyData[n*2+1][m].slice(0, shortyData[n*2+1][m].length-1) * 0.3 * 16.1).toFixed(2);
+                                                        }
+                                                    }
+                                                    m16DPS.forEach((d, index) => m16DPS[index] = d.toLowerCase());
+                                                    m16DPS = m16DPS.filter((d, index, a) => a.indexOf(d) == index);
+                                                    shortyDPS.forEach((d, index) => shortyDPS[index] = d.toLowerCase());
+                                                    shortyDPS = shortyDPS.filter((d, index, a) => a.indexOf(d) == index); 
+                                                    // assemble the text given to the setup name for the table
+                                                    let finalText = chipText + fairyText + hgText + formationText + speedText;
+                                                    res[finalText] = {};
+                                                    // get the p-values of the setup for each dps and for each test statistic type
+                                                    Object.values(TestModes).forEach(testMode => {
+                                                        res[finalText][testMode] = compareSetupDPS(shortyData, shortyDPS, m16Data, m16DPS, testMode);
+                                                    });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            createPTable(res, 0.01);
+            break;
+        case Comparison.Equip:
+            let equip416 = {};
+            let equipk11 = {};
+            let equipsop = {};
+            // skip creating split datasets until the end as we need to do it 3 times for the different dps units
+            // slowly create the setup name as we go through each possible filter
+            Object.values(Fairies).forEach(fairy => {
+                let fairyFiltered = chipFiltered.filter(d => d.fairy.match(fairy));
+                let fairyText = fairy + " ";
+                // only continue if both filtered datasets have remaining rows
+                if (fairyFiltered.length > 0) {
+                    // filter speed next
+                    for (let i = 0; i < 2; i++) {
+                        let ibool = i ? true : false;
+                        let speedFiltered = fairyFiltered.filter(d => (d.speed == 4) != ibool);
+                        let speedText = ibool ? "max speed " : "min speed ";
+                        // filter hg presence next
+                        if (speedFiltered.length > 0) {
+                            for (let j = 0; j < 2; j++) {
+                                let jbool = j ? true : false;
+                                let hgFiltered = speedFiltered.filter(d => d.has_HG == jbool);
+                                let hgText = jbool ? "Jill " : "only ";
+                                if (hgFiltered.length > 0) {
+                                    Object.values(Tanks).forEach(tank => {
+                                        let tankFiltered = hgFiltered.filter(d => d.tank.match(tank));
+                                        let tankText = tank + " ";
+                                        // filter armor next
+                                        if (tankFiltered.length > 0) {
+                                            for (let k = 0; k < 2; k++) {
+                                                let kbool = k ? true : false;
+                                                let armorFiltered = tankFiltered.filter(d => d.has_armor == kbool);
+                                                let armorText = "";
+                                                if (tank == Tanks.M16) {
+                                                    armorText = kbool ? "SPEQ+Armor " : "SPEQ+T-Exo ";
+                                                }
+                                                if (armorFiltered.length > 0) {
+                                                    for (let l = 0; l < 2; l++) {
+                                                        let lbool = l ? true : false;
+                                                        let formationFiltered = armorFiltered.filter(d => (d.formation == Formations.Formation_b) == lbool);
+                                                        let formationText = lbool ? "b-Formation " : "0-2-Formation ";
+                                                        if (formationFiltered.length > 0) {
+                                                            let dpsList = getUniquesInCol(formationFiltered, "DPS");
+                                                            let baseData = getDPSData(formationFiltered);
+                                                            dpsList.forEach((d, index) => dpsList[index] = d.toLowerCase());
+                                                            dpsList = dpsList.filter((d, index, a) => a.indexOf(d) == index);
+                                                            let data416vfl = [];
+                                                            let data416speq = [];
+                                                            let datak11vfl = [];
+                                                            let datak11eot = [];
+                                                            let datasopvfl = [];
+                                                            let datasopeot = [];
+                                                            dpsList.forEach((d, index) => {
+                                                                if (d.match(Carry.HK416)) {
+                                                                    if (d.match("speq"))
+                                                                        data416speq = baseData[index * 2];
+                                                                    else if (d.match("vfl"))
+                                                                        data416vfl = baseData[index * 2];
+                                                                    else
+                                                                        console.error(`${d} does not match speq or vfl`);
+                                                                }
+                                                                else if (d.match(Carry.K11)) {
+                                                                    if (d.match("eot"))
+                                                                        datak11eot = baseData[index * 2];
+                                                                    else if (d.match("vfl"))
+                                                                        datak11vfl = baseData[index * 2];
+                                                                    else
+                                                                        console.error(`${d} does not match eot or vfl`);
+                                                                }
+                                                                else if (d.match(Carry.SOP)) {
+                                                                    if (d.match("eot"))
+                                                                        datasopeot = baseData[index * 2];
+                                                                    else if (d.match("vfl"))
+                                                                        datasopvfl = baseData[index * 2];
+                                                                    else
+                                                                        console.error(`${d} does not match eot or vfl`);
+                                                                }
+                                                            });
+                                                            // assemble the text given to the setup name for the table
+                                                            let finalText = chipText + tankText + armorText + fairyText + hgText + formationText + speedText;
+                                                            // only create empty objects for dps with a vfl-eot pair
+                                                            if (data416speq.length > 0 && data416vfl.length > 0)
+                                                                equip416[finalText] = {};
+                                                            if (datak11eot.length > 0 && datak11vfl.length > 0)
+                                                                equipk11[finalText] = {};
+                                                            if (datasopeot.length > 0 && datasopvfl.length > 0)
+                                                                equipsop[finalText] = {};
+                                                            // get the p-values of the setup for each dps and for each test statistic type
+                                                            Object.values(TestModes).forEach(testMode => {
+                                                                if (data416speq.length > 0 && data416vfl.length > 0)
+                                                                    equip416[finalText][testMode] = compareSpecificDPS(data416vfl, data416speq, testMode);
+                                                                if (datak11eot.length > 0 && datak11vfl.length > 0)
+                                                                    equipk11[finalText][testMode] = compareSpecificDPS(datak11vfl, datak11eot, testMode);
+                                                                if (datasopeot.length > 0 && datasopvfl.length > 0)
+                                                                    equipsop[finalText][testMode] = compareSpecificDPS(datasopvfl, datasopeot, testMode);
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            createEquipPTable(equip416, equipk11, equipsop);
+            break;
+        case Comparison.Uzi:
+            let uzi = chipFiltered.filter(d => d.DPS.toLowerCase().match(Carry.UZI));
+            let sl8 = uzi.filter(d => d.DPS.match("8/8"));
+            let sl9 = uzi.filter(d => d.DPS.match("9/8"));
+            // slowly create the setup name as we go through each possible filter
+            Object.values(Fairies).forEach(fairy => {
+                let fairyFilteredsl8 = sl8.filter(d => d.fairy.match(fairy));
+                let fairyFilteredsl9 = sl9.filter(d => d.fairy.match(fairy));
+                let fairyText = fairy + " ";
+                // only continue if both filtered datasets have remaining rows
+                if (fairyFilteredsl8.length > 0 && fairyFilteredsl9.length > 0) {
+                    // filter speed next
+                    for (let i = 0; i < 2; i++) {
+                        let ibool = i ? true : false;
+                        let speedFilteredsl8 = fairyFilteredsl8.filter(d => (d.speed == 4) != ibool);
+                        let speedFilteredsl9 = fairyFilteredsl9.filter(d => (d.speed == 4) != ibool);
+                        let speedText = ibool ? "max speed " : "min speed ";
+                        // filter hg presence next
+                        if (speedFilteredsl8.length > 0 && speedFilteredsl9.length > 0) {
+                            for (let j = 0; j < 2; j++) {
+                                let jbool = j ? true : false;
+                                let hgFilteredsl8 = speedFilteredsl8.filter(d => d.has_HG == jbool);
+                                let hgFilteredsl9 = speedFilteredsl9.filter(d => d.has_HG == jbool);
+                                let hgText = jbool ? "Jill " : "only ";
+                                if (hgFilteredsl8.length > 0 && hgFilteredsl9.length > 0) {
+                                    Object.values(Tanks).forEach(tank => {
+                                        let tankFilteredsl8 = hgFilteredsl8.filter(d => d.tank.match(tank));
+                                        let tankFilteredsl9 = hgFilteredsl9.filter(d => d.tank.match(tank));
+                                        let tankText = tank + " ";
+                                        // filter armor next
+                                        if (tankFilteredsl8.length > 0 && tankFilteredsl9.length > 0) {
+                                            for (let k = 0; k < 2; k++) {
+                                                let kbool = k ? true : false;
+                                                let armorFilteredsl8 = tankFilteredsl8.filter(d => d.has_armor == kbool);
+                                                let armorFilteredsl9 = tankFilteredsl9.filter(d => d.has_armor == kbool);
+                                                let armorText = "";
+                                                if (tank == Tanks.M16) {
+                                                    armorText = kbool ? "SPEQ+Armor " : "SPEQ+T-Exo ";
+                                                }
+                                                if (armorFilteredsl8.length > 0 && armorFilteredsl9.length > 0) {
+                                                    for (let l = 0; l < 2; l++) {
+                                                        let lbool = l ? true : false;
+                                                        let formationFilteredsl8 = armorFilteredsl8.filter(d => (d.formation == Formations.Formation_b) == lbool);
+                                                        let formationFilteredsl9 = armorFilteredsl9.filter(d => (d.formation == Formations.Formation_b) == lbool);
+                                                        let formationText = lbool ? "b-Formation " : "0-2-Formation ";
+                                                        if (formationFilteredsl8.length > 0 && formationFilteredsl9.length > 0) {
+                                                            let sl8Data = [];
+                                                            let sl9Data = [];
+                                                            formationFilteredsl8.forEach(d => {
+                                                                sl8Data.push(d.damage);
+                                                            });
+                                                            formationFilteredsl9.forEach(d => {
+                                                                sl9Data.push(d.damage);
+                                                            })
+                                                            // assemble the text given to the setup name for the table
+                                                            let finalText = chipText + tankText + armorText + fairyText + hgText + formationText + speedText;
+                                                            res[finalText] = {};
+                                                            // get the p-values of the setup for each dps and for each test statistic type
+                                                            Object.values(TestModes).forEach(testMode => {
+                                                                res[finalText][testMode] = compareSpecificDPS(sl8Data, sl9Data, testMode);
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            createPTable(res, 0.01, "Uzi");
+            break;
+        default:
+            console.error(`${compare} does not exist`);
+    }
+    
+}
+// Create 3 tables from the data, one for mean, standard deviation, and KS test
+function createPTable(data, pVal, dpsName = null) {
+    // separate arrays for mean, standard deviation, and ks test
+    let meanSetups = [];
+    let dpsHeaders = ["setup"];
+    if (dpsName) {
+        dpsHeaders.push(dpsName);
+    }
+    let sdevSetups = [];
+    let ksSetups = [];
+    Object.entries(data).forEach((setup, index) => {
+        meanSetups.push({"setup" : setup[0]});
+        sdevSetups.push({"setup" : setup[0]});
+        ksSetups.push({"setup" : setup[0]});
+        Object.entries(setup[1]).forEach(type => {
+            if (!dpsName) {
+                Object.entries(type[1]).forEach(doll => {
+                    if (index == 0 && type[0] == TestModes.MEAN) {
+                        dpsHeaders.push(doll[0]);
+                    }
+                    switch(type[0]) {
+                        case TestModes.MEAN:
+                            meanSetups[index][doll[0]] = doll[1];
+                            break;
+                        case TestModes.STDDEV:
+                            sdevSetups[index][doll[0]] = doll[1];
+                            break;
+                        case TestModes.KSTEST:
+                            ksSetups[index][doll[0]] = doll[1];
+                            break;
+                    }
+                });
+            }
+            else {
+                switch(type[0]) {
+                    case TestModes.MEAN:
+                        meanSetups[index][dpsName] = type[1];
+                        break;
+                    case TestModes.STDDEV:
+                        sdevSetups[index][dpsName] = type[1];
+                        break;
+                    case TestModes.KSTEST:
+                        ksSetups[index][dpsName] = type[1];
+                        break;
+                }
+            }
+        });
+    });
+    
+    // clear the previous tables
+    pTableBody.selectAll("*").remove();
+    // create titles in between each table and create the html element that houses the tables
+    pTableBody.append("h3").text("Left Side p-values of Mean");
+    let meanBody = pTableBody.append("div");
+    createTable(meanBody, dpsHeaders, meanSetups, true, true, pVal);
+    pTableBody.append("h3").text("Left Side p-values of Standard Deviation");
+    let sdevBody = pTableBody.append("div");
+    createTable(sdevBody, dpsHeaders, sdevSetups, true, true, pVal);
+    pTableBody.append("h3").text("Right Side p-values of KS Test");
+    let ksBody = pTableBody.append("div");
+    createTable(ksBody, dpsHeaders, ksSetups, true, false, pVal);
+}
+
+function createEquipPTable(data416, datak11, datasop) {
+    // separate arrays for mean, standard deviation, and ks test
+    let meanSetups = [];
+    let dpsHeaders = ["setup", "416 vfl-speq", "k11 vfl-eot", "sopmod vfl-eot"];
+    let sdevSetups = [];
+    let ksSetups = [];
+    Object.entries(data416).forEach((setup, index) => {
+        meanSetups.push({"setup" : setup[0]});
+        sdevSetups.push({"setup" : setup[0]});
+        ksSetups.push({"setup" : setup[0]});
+        Object.entries(setup[1]).forEach(type => {
+            switch(type[0]) {
+                case TestModes.MEAN:
+                    meanSetups[index]["416 vfl-speq"] = type[1];
+                    break;
+                case TestModes.STDDEV:
+                    sdevSetups[index]["416 vfl-speq"] = type[1];
+                    break;
+                case TestModes.KSTEST:
+                    ksSetups[index]["416 vfl-speq"] = type[1];
+                    break;
+            }
+        });
+    });
+    Object.entries(datak11).forEach((setup, index) => {
+        Object.entries(setup[1]).forEach(type => {
+            switch(type[0]) {
+                case TestModes.MEAN:
+                    meanSetups[index]["k11 vfl-eot"] = type[1];
+                    break;
+                case TestModes.STDDEV:
+                    sdevSetups[index]["k11 vfl-eot"] = type[1];
+                    break;
+                case TestModes.KSTEST:
+                    ksSetups[index]["k11 vfl-eot"] = type[1];
+                    break;
+            }
+        });
+    });
+    Object.entries(datasop).forEach((setup, index) => {
+        Object.entries(setup[1]).forEach(type => {
+            switch(type[0]) {
+                case TestModes.MEAN:
+                    meanSetups[index]["sopmod vfl-eot"] = type[1];
+                    break;
+                case TestModes.STDDEV:
+                    sdevSetups[index]["sopmod vfl-eot"] = type[1];
+                    break;
+                case TestModes.KSTEST:
+                    ksSetups[index]["sopmod vfl-eot"] = type[1];
+                    break;
+            }
+        });
+    });
+    
+    // clear the previous tables
+    pTableBody.selectAll("*").remove();
+    // create titles in between each table and create the html element that houses the tables
+    pTableBody.append("h3").text("Left Side p-values of Mean");
+    let meanBody = pTableBody.append("div");
+    createTable(meanBody, dpsHeaders, meanSetups, true, true, 0.1);
+    pTableBody.append("h3").text("Left Side p-values of Standard Deviation");
+    let sdevBody = pTableBody.append("div");
+    createTable(sdevBody, dpsHeaders, sdevSetups, true, true, 0.1);
+    pTableBody.append("h3").text("Right Side p-values of KS Test");
+    let ksBody = pTableBody.append("div");
+    createTable(ksBody, dpsHeaders, ksSetups, true, false, 0.1);
 }
 
 d3.csv("12-4E_Dragger_Data.csv",
@@ -996,13 +1676,104 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 d3.select("body").append("hr");
 // NOTE TO REDO THE DATA COMPARISON TO SOMETHING LESS SIMPLISTIC AS COMPARING AVERAGE, 1ST AND 3RD QUARTILES TO DETERMINE WHICH SETUP IS BETTER
 {
-    var headerText = "NOTICE: SETUP COMPARISON UNDER REWORK";
-    var bodyText = "Due to my lack of knowledge back when I first did this project, I determined which setup was better merely through comparing average " +
-                    "%HP loss and comparing their standard deviations. Now that I have better knowledge of statistics, I will revisit the comparisons over the " + 
-                    "next few weeks.";
+    var headerText = "Comparison Setup";
+    var bodyText = "<li>For comparing the data of different setups to determine which is better, we use Monte Carlo permutation tests due to the size of the " +
+                    "datasets making a full exploration of all possible permutations computationally expensive.\n<li>We set the number of permutations to simulate " + 
+                    "at 1e4.\n<li>The random number generation method uses a Linear Congruential Generator custom function with modulus 2^31, multiplier 22695477 " +
+                    "and increment 1 to allow us to set the seed for reproducibility of the results.\n<li>The test statistics measured are differences in mean or " +
+                    "standard deviation between the chosen two datasets, and the Kolmogorov-Smirnov or KS test.\n<li>Our null hypotheses is that the datasets come " +
+                    "from the same distribution and our alternative hypotheses is that they come from different distributions. For mean and standard deviation, we " +
+                    "will check both extremes of the p-value because our assignment of which of the two datasets is labeled dataset 1 and dataset 2 flips the " +
+                    "computed p-values whereas with KS test, we will only calculate the p-value with respect to the right-tail as the KS test computes maximum " +
+                    "distance between the empirical cumulative distribution functions so only large test statistics will lead us to reject the null hypotheses." +
+                    "\n<li>The p-value for mean and standard deviation differences will be computed with respect to the left-side so a p-value close to 0 indicates " +
+                    "a strong likelihood that mean(dataset1) < mean(dataset2) whereas a p-value close to 1 indicates a strong likelihood that mean(dataset1) > " +
+                    "mean(dataset2). The same logic follows for the difference in standard deviations of the two datasets.\n<li>The p-value that will lead us to " +
+                    "reject the null hypotheses is different between each comparison and additionally for mean and standard deviation, 1 - pvalue as we want to " +
+                    "perform a two-tailed test to see which setup the datapoints are favoring in addition to determining whether to reject the null hypotheses. " +
+                    "T-Exo vs Armor, b vs 0-2 formation, and min vs max speed take 0.05 as the p-value as those are tedious to repeatedly change between runs if the " +
+                    "pair of DPS units prefer different configurations so we reject the null hypothesis only with extreme p-values as the benefits would be " +
+                    "significant enough to deliberately use their ideal configuration even if their counterpart's ideal takes the opposite configuration. SG vs M16 " +
+                    "tank takes 0.01 as the p-value as there are additional benefits to using an SG tank to level up over M16 who is typically max leveled. VFL vs " +
+                    "EOT/SPEQ comparisons take 0.1 as the p-value as the choice significantly changes the doll's damage profile (VFL improves only normal attacks " +
+                    "but by a significant amount while EOT/SPEQ choices improve both skill and normal attack damage), DPS equipment are compared with the same doll " +
+                    "so there is no need to consider the possibility of changing it between runs. Uzi sl8 vs sl9 takes a p-value of 0.01 as we do expect some " +
+                    "degree of improvement as we are upgrading the skill but we want to see if it is a significant improvement such that it would be recommended " +
+                    "to get over upgrading the skills of other dolls not used in the corpse drag.\n<li>The labeled order of the dataset is the order they appear " +
+                    "in the dropdown text eg. T-exo vs Armor has T-exo as dataset 1 and Armor as dataset 2 and a p-value for mean or standard deviation close to 0 " +
+                    "indicates a high probability that the true mean or standard deviation of T-exo dataset is smaller than that of the Armor dataset. This is " +
+                    "for illustrative purposes only as we actually observe the opposite where the p-values of the various DPS units is closer to 1 which favors" +
+                    " the use of Armor on M16 rather than T-exo";
     addSection(d3.select("body"), headerText, bodyText);
-    d3.select("body").append("hr");
 }
+// new comparison method for the setup comparisons
+{
+    // holder of dropdown button
+    const comparisonDropdownHolder = d3.select("body").append("div").attr("class", "tabs");
+    // button to show setup dropdown
+    const comparisonDropdown = comparisonDropdownHolder.append("div")
+                .attr("class", "box")
+                .text("Compared Setups")
+                .on("click", function() {
+                    toggleComparisonDropdown();
+                });
+    comparisonDropdown.append("i")
+                    .attr("class", "fa fa-caret-down");
+    // setup the comparison analysis text
+    const comparisonAnalysis = d3.select("body").append("div");
+    // setup the comparison dropdown menu
+    {
+        chippedComparisonOptions = comparisonDropdown.append("div").attr("class", "dropdownBox").style("display", "none");
+        chippedComparisonOptions.append("a")
+                        .text("b-Formation vs 0-2-Formation")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Formation);
+                        });
+        chippedComparisonOptions.append("a")
+                        .text("4 vs max speed")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Speed);
+                        });
+        chippedComparisonOptions.append("a")
+                        .text("Uzi mod SL8/8 vs SL9/8")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Uzi);
+                        });
+        
+        chiplessComparisonOptions = comparisonDropdown.append("div").attr("class", "dropdownBox").style("display", "none");
+        chiplessComparisonOptions.append("a")
+                        .text("T-Exo vs Armor")
+                        .on("click", () => {
+                            comparisonAnalysis.text("Our main statistic of interest is if the mean is not equal and given our specified p-value we reject the " +
+                            "null hypothesis for 10 out of 14 comparisons. Additionally, evidence suggests that armor may be better than T-exo. ");
+                            createComparisonSection(Comparison.Exo_Armor);
+                        });
+        chiplessComparisonOptions.append("a")
+                        .text("b-Formation vs 0-2-Formation")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Formation);
+                        });
+        chiplessComparisonOptions.append("a")
+                        .text("4 vs max speed")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Speed);
+                        });
+        chiplessComparisonOptions.append("a")
+                        .text("SG vs M16 tank")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Tank);
+                        });
+        chiplessComparisonOptions.append("a")
+                        .text("VFL vs EOT/SPEQ")
+                        .on("click", () => {
+                            createComparisonSection(Comparison.Equip);
+                        });
+    }
+
+
+    pTableBody = d3.select("body").append("div");
+}
+d3.select("body").append("hr");
 // header for chart section
 d3.select("body").append("h2")
                     .text("Charts of Tested Setups");
