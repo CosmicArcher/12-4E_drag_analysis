@@ -815,7 +815,7 @@ function compareSpecificDPS(data1, data2, testMode = TestModes.MEAN) {
     return PermutationTester.getInstance().performTest(data1, data2, testMode, numPermutations, testMode != TestModes.KSTEST);
 }
 
-function createComparisonSection(compare = Comparison.Exo_Armor) {
+function createComparisonSection(compare = Comparison.Exo_Armor, title = "") {
     // comparison will only be with chipped or chipless data depending on which one is currently displayed
     let chipFiltered;
     let chipText;
@@ -849,7 +849,6 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
             res["chipless b-Formation Rescue min speed"][TestModes.MEAN] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.MEAN);
             res["chipless b-Formation Rescue min speed"][TestModes.STDDEV] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.STDDEV);
             res["chipless b-Formation Rescue min speed"][TestModes.KSTEST] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.KSTEST);
-            console.log(Object.values(res["chipless b-Formation Rescue min speed"]));
 
             filterData(Formations.Formation_b, Fairies.BEACH, 1, 1, Tanks.M16, 0, null, 0);
             testedDPS1 = getUniquesInCol(filteredData, "DPS");
@@ -869,9 +868,8 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
             res["chipless b-Formation Beach min speed"][TestModes.MEAN] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.MEAN);
             res["chipless b-Formation Beach min speed"][TestModes.STDDEV] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.STDDEV);
             res["chipless b-Formation Beach min speed"][TestModes.KSTEST] = compareSetupDPS(data1, testedDPS1, data2, testedDPS2, TestModes.KSTEST);
-            console.log(Object.values(res["chipless b-Formation Beach min speed"]));
 
-            createPTable(res, 0.05);
+            createPTable(res, 0.05, title);
             break;
         case Comparison.Formation:
             // iterate through all setups by going through all combinations of filtering the data outside of the variable of interest where they will be separated
@@ -940,7 +938,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                 }
             });
 
-            createPTable(res, 0.05);
+            createPTable(res, 0.05, title);
             break;
         case Comparison.Speed:
             let minSpeed = chipFiltered.filter(d => d.speed == 4);
@@ -1007,7 +1005,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                 }
             });
 
-            createPTable(res, 0.05);
+            createPTable(res, 0.05, title);
             break;
         case Comparison.Tank:
             let m16Tank = chipFiltered.filter(d => d.tank.match(Tanks.M16));
@@ -1038,43 +1036,36 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                                         let speedFilteredm16 = hgFilteredm16.filter(d => (d.speed == 4) != lbool);
                                         let speedFilteredshorty = hgFilteredshorty.filter(d => (d.speed == 4) != lbool);
                                         let speedText = lbool ? "max speed " : "min speed ";
-                                        // filter armor next
-                                        if (speedFilteredm16.length > 0 && speedFilteredshorty.length > 0) {
-                                            for (let k = 0; k < 2; k++) {
-                                                let kbool = k ? true : false;
-                                                let armorFilteredm16 = speedFilteredm16.filter(d => d.has_armor == kbool);
-                                                // shorty always has armor
-                                                let armorFilteredshorty = speedFilteredshorty;
-                                                if (armorFilteredm16.length > 0 && armorFilteredshorty.length > 0) {
-                                                    let m16DPS = getUniquesInCol(armorFilteredm16, "DPS");
-                                                    let shortyDPS = getUniquesInCol(armorFilteredshorty, "DPS");
-                                                    let m16Data = getDPSData(armorFilteredm16);
-                                                    let shortyData = getDPSData(armorFilteredshorty);
-                                                // convert data to repair cost as that is what we are using to compare rather than damage taken as SGs have a
-                                                // different formula for repair costs and that is the main consideration for tanks, how much resources are used per run
-                                                    for (let n = 0; n < m16Data.length / 2; n++) {
-                                                        for (let m = 0; m < m16Data[n * 2].length; m++) {
-                                                            m16Data[n*2][m] = +(+m16Data[n*2+1][m].slice(0, m16Data[n*2+1][m].length - 1) * 0.3 * 8.2).toFixed(2);
-                                                        }
-                                                    }
-                                                    for (let n = 0; n < shortyData.length / 2; n++) {
-                                                        for (let m = 0; m < shortyData[n * 2].length; m++) {
-                                                            shortyData[n*2][m] = +(+shortyData[n*2+1][m].slice(0, shortyData[n*2+1][m].length-1) * 0.3 * 16.1).toFixed(2);
-                                                        }
-                                                    }
-                                                    m16DPS.forEach((d, index) => m16DPS[index] = d.toLowerCase());
-                                                    m16DPS = m16DPS.filter((d, index, a) => a.indexOf(d) == index);
-                                                    shortyDPS.forEach((d, index) => shortyDPS[index] = d.toLowerCase());
-                                                    shortyDPS = shortyDPS.filter((d, index, a) => a.indexOf(d) == index); 
-                                                    // assemble the text given to the setup name for the table
-                                                    let finalText = chipText + fairyText + hgText + formationText + speedText;
-                                                    res[finalText] = {};
-                                                    // get the p-values of the setup for each dps and for each test statistic type
-                                                    Object.values(TestModes).forEach(testMode => {
-                                                        res[finalText][testMode] = compareSetupDPS(shortyData, shortyDPS, m16Data, m16DPS, testMode);
-                                                    });
+                                        // skip armor filter as we want to compare t-exo m16 vs SGs as armor m16 is generally a tankier SG in 12-4E
+                                        let armorFilteredm16 = speedFilteredm16.filter(d => d.has_armor == false);
+                                        if (armorFilteredm16.length > 0 && speedFilteredshorty.length > 0) {
+                                            let m16DPS = getUniquesInCol(armorFilteredm16, "DPS");
+                                            let shortyDPS = getUniquesInCol(speedFilteredshorty, "DPS");
+                                            let m16Data = getDPSData(armorFilteredm16);
+                                            let shortyData = getDPSData(speedFilteredshorty);
+                                        // convert data to repair cost as that is what we are using to compare rather than damage taken as SGs have a
+                                        // different formula for repair costs and that is the main consideration for tanks, how much resources are used per run
+                                        for (let n = 0; n < m16Data.length / 2; n++) {
+                                            for (let m = 0; m < m16Data[n * 2].length; m++) {
+                                                m16Data[n*2][m] = +(+m16Data[n*2+1][m].slice(0, m16Data[n*2+1][m].length - 1) * 0.3 * 8.2).toFixed(2);
                                                 }
                                             }
+                                            for (let n = 0; n < shortyData.length / 2; n++) {
+                                                for (let m = 0; m < shortyData[n * 2].length; m++) {
+                                                    shortyData[n*2][m] = +(+shortyData[n*2+1][m].slice(0, shortyData[n*2+1][m].length-1) * 0.3 * 16.1).toFixed(2);
+                                                }
+                                            }
+                                            m16DPS.forEach((d, index) => m16DPS[index] = d.toLowerCase());
+                                            m16DPS = m16DPS.filter((d, index, a) => a.indexOf(d) == index);
+                                            shortyDPS.forEach((d, index) => shortyDPS[index] = d.toLowerCase());
+                                            shortyDPS = shortyDPS.filter((d, index, a) => a.indexOf(d) == index); 
+                                            // assemble the text given to the setup name for the table
+                                            let finalText = chipText + fairyText + hgText + formationText + speedText;
+                                            res[finalText] = {};
+                                            // get the p-values of the setup for each dps and for each test statistic type
+                                            Object.values(TestModes).forEach(testMode => {
+                                                res[finalText][testMode] = compareSetupDPS(shortyData, shortyDPS, m16Data, m16DPS, testMode);
+                                            });
                                         }
                                     }
                                 }
@@ -1084,7 +1075,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                 }
             });
 
-            createPTable(res, 0.01);
+            createPTable(res, 0.01, title);
             break;
         case Comparison.Equip:
             let equip416 = {};
@@ -1194,7 +1185,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                 }
             });
 
-            createEquipPTable(equip416, equipk11, equipsop);
+            createEquipPTable(equip416, equipk11, equipsop, title);
             break;
         case Comparison.Uzi:
             let uzi = chipFiltered.filter(d => d.DPS.toLowerCase().match(Carry.UZI));
@@ -1270,7 +1261,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
                 }
             });
 
-            createPTable(res, 0.01, "Uzi");
+            createPTable(res, 0.01, title, "Uzi");
             break;
         default:
             console.error(`${compare} does not exist`);
@@ -1278,7 +1269,7 @@ function createComparisonSection(compare = Comparison.Exo_Armor) {
     
 }
 // Create 3 tables from the data, one for mean, standard deviation, and KS test
-function createPTable(data, pVal, dpsName = null) {
+function createPTable(data, pVal, title, dpsName = null) {
     // separate arrays for mean, standard deviation, and ks test
     let meanSetups = [];
     let dpsHeaders = ["setup"];
@@ -1294,7 +1285,8 @@ function createPTable(data, pVal, dpsName = null) {
         Object.entries(setup[1]).forEach(type => {
             if (!dpsName) {
                 Object.entries(type[1]).forEach(doll => {
-                    if (index == 0 && type[0] == TestModes.MEAN) {
+                    // if dps is not yet present in table headers, add it
+                    if (!dpsHeaders.includes(doll[0])) {
                         dpsHeaders.push(doll[0]);
                     }
                     switch(type[0]) {
@@ -1328,6 +1320,8 @@ function createPTable(data, pVal, dpsName = null) {
     
     // clear the previous tables
     pTableBody.selectAll("*").remove();
+    // create title of section
+    pTableBody.append("h2").text(title);
     // create titles in between each table and create the html element that houses the tables
     pTableBody.append("h3").text("Left Side p-values of Mean");
     let meanBody = pTableBody.append("div");
@@ -1340,7 +1334,7 @@ function createPTable(data, pVal, dpsName = null) {
     createTable(ksBody, dpsHeaders, ksSetups, true, false, pVal);
 }
 
-function createEquipPTable(data416, datak11, datasop) {
+function createEquipPTable(data416, datak11, datasop, title) {
     // separate arrays for mean, standard deviation, and ks test
     let meanSetups = [];
     let dpsHeaders = ["setup", "416 vfl-speq", "k11 vfl-eot", "sopmod vfl-eot"];
@@ -1397,6 +1391,8 @@ function createEquipPTable(data416, datak11, datasop) {
     
     // clear the previous tables
     pTableBody.selectAll("*").remove();
+    // create title of section
+    pTableBody.append("h2").text(title);
     // create titles in between each table and create the html element that houses the tables
     pTableBody.append("h3").text("Left Side p-values of Mean");
     let meanBody = pTableBody.append("div");
@@ -1536,22 +1532,25 @@ var sectionBody;
 // M16 equipment
 {
 sectionHeader = "M16: SPEQ + Armor or T-exo?"
-sectionBody = "<b>Armor is always better than T-exo</b> because it gives you enough armor to take only 1 damage from vespids instead of risking taking more damage" +
+sectionBody = "<b>Armor is generally better than T-exo</b> because it gives you enough armor to take only 1 damage from vespids instead of risking taking more damage" +
                 " just so you can dodge more.";
 addSection(chippedBody, sectionHeader, sectionBody);
 }
 // formation
 {
 sectionHeader = "Which formation: b-formation or 0-2-formation?"
-sectionBody = "With all the draggers that benefit from chips (416, K11, Uzi since Sop does not have an exo slot to use them), <b>b-formation is found to be better " +
-                "than 0-2-formation in all tested cases</b>. Although, a minimal buff scenario (no HG tiles) has not been tested.";
+sectionBody = "With all the draggers that benefit from chips (416, K11, and Uzi since Sop does not have an exo slot to use them), <b>b-formation is found to be " +
+                "better than 0-2-formation in our tested cases</b>. Although, a minimal buff scenario (no HG tiles) has not been tested and we failed to establish" +
+                " if some of the results are statistically significant, mostly with regards to Uzi as she has the largest variance.";
 addSection(chippedBody, sectionHeader, sectionBody);
 }
 // speed
 {
 sectionHeader = "Echelon Speed: As slow(4 movespeed, bringing MG or caped RF) as possible or as fast (6 for SG or 10 if M16) as possible?"
-sectionBody = "For 416 and K11, going at 4 movespeed is better in all scenarios while for Uzi moving at 4 movespeed is better in high-buff setups, with a " +
-                "low-buff setup like a 1* fairy and only Jill tiles, moving faster is better.";
+sectionBody = "<b>For 416 and K11, going at 4 movespeed is better in all scenarios while for Uzi moving at 4 movespeed is better in high-buff setups, with a " +
+                "low-buff setup like a 1* fairy and only Jill tiles, moving faster is better.</b> One thing to note is that for k11, we failed to establish if " +
+                "the result of beach fairy in b-formation is statistically significant; and for uzi, only rescue fairy in 0-2 formation was found to be " +
+                "statistically significant.";
 addSection(chippedBody, sectionHeader, sectionBody);
 }
 // uzi mod with chip
@@ -1566,7 +1565,7 @@ addSection(chippedBody, sectionHeader, sectionBody);
 // M16 vs SG
 {
 sectionHeader = "SG or M16 tank?"
-sectionBody = "Based on pre-chip release findings which had less firepower and rate of fire than we do now, M16 with armor tanking is cheaper to repair than " +
+sectionBody = "Based on pre-chip release findings which had less firepower and rate of fire than we do now, M16 with armor tanking has cheaper repairs per run than " +
                 "SGs but <i>keep in mind that there is value to having an SG tank to level her</i> freeing up a slot for another doll to be leveled at the same time.";
 addSection(chippedBody, sectionHeader, sectionBody);
 }
@@ -1579,10 +1578,12 @@ sectionBody = "For those unaware, sl9 duration increase pushes it over the thres
                 "until targets are in range while other speeds and formations result in it only being a slight performance increase. With 5* Mortar fairy the " +
                 "reverse was observed, 4 speed barely saw a performance increase while 10 speed had a massive increase of an average of 50% less HP lost. <b>A key " +
                 "point to be aware of is that all of the setups were only done 10-15 times each and most saw a similar range of HP lost in a run compared to the " +
-                "sl8 runs so it is possible that the sl9 average is not that much better because of the massive variance of both sets</b>. With more runs to collect " +
-                "data on them to iron out the massive variance uzi mod has, (because most of her damage relies on hitting enemies with the molotov while the AR " +
-                "draggers are fine cleaning up with regular shots since their accuracy and firepower is much higher than SMGs) we should observe either " +
-                "the mean to increase in the end or we see only a slight performance increase and all of the current data was actually just lucky runs (pls no).";
+                "sl8 runs so it is possible that the sl9 average is not that much better because of the massive variance of both sets especially considering that " +
+                "we failed to reject the null hypothesis that there is not a noticeable effect in performance for all but beach fairy with min speed in 0-2 " + 
+                "formation</b>. With more runs to collect data on them to iron out the massive variance uzi mod has, (because most of her damage relies on hitting " +
+                "enemies with the molotov while the AR draggers are fine cleaning up with regular shots since their accuracy and firepower is much higher than SMGs) " +
+                " we should observe either the mean to increase in the end or we see only a slight performance increase and all of the current data was actually " +
+                "the product of lucky runs and with our KS test results, only three setups hint that it might not be the case.";
 addSection(chippedBody, sectionHeader, sectionBody);
 }
 }
@@ -1595,22 +1596,28 @@ var sectionBody;
 // M16 equipment
 {
 sectionHeader = "M16: SPEQ + Armor or T-exo?"
-sectionBody = "<b>Armor is always better than T-exo</b> because it gives you enough armor to take only 1 damage from vespids instead of risking taking more damage" +
+sectionBody = "<b>Armor is generally better than T-exo</b> because it gives you enough armor to take only 1 damage from vespids instead of risking taking more damage" +
                 " just so you can dodge more.";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // formation
 {
 sectionHeader = "Which formation: b-formation or 0-2-formation?"
-sectionBody = "<li><b>For Chipless 416 mod2 sl10/8, 0-2 formation is only better in low-buff, slow movespeed</b> scenarios since it enables the nade, your main " +
-                "damage as low-buffs make bullets take too long killing mobs, to catch as many enemies as possible without taking unnecessary extra damage. When " +
-                "b-formation is better, it averages around 30% less HP loss compared to 0-2 but when the reverse is true, it averages 15% less HP lost.</li>\n" +
+sectionBody = "<li><b>For Chipless 416 mod2 sl10/8, 0-2 formation is only considered in low-buff, slow movespeed</b> scenarios since it enables the nade, your main " +
+                "damage as low-buffs make bullets take too long killing mobs, to catch as many enemies as possible without taking unnecessary extra damage. But when " +
+                "performing permutation tests, we found that having Jill with SG tank preferred b-formation and minimal buff with SG at max speed preferred 0-2 but " +
+                "that was not found to be statistically significant while the former was. When b-formation is better, it averages around 30% less HP loss compared " +
+                "to 0-2 but when the reverse is true, it averages 15% less HP lost but most of the low-buff setups were not found to be statistically significant " +
+                "particularly with vfl.</li>\n" +
                 "<li><b>For Chipless K11 sl10 with EOT, 0-2 formation is better as long as team movespeed is 4</b>(MG or caped RF in team) regardless of buffs with " +
                 "the same logic as above. <b>With VFL, 0-2 formation is only better in low-buff, slow movespeed</b> scenarios with a higher threshold for what counts " +
                 "as low buffs than 416's. When b-formation is better, it averages around 20% less HP loss compared to 0-2 but when the reverse is true, it averages " +
-                "35% less HP lost but with EOT, it can be as high as 55% less HP lost.</li>\n" +
+                "35% less HP lost but with EOT, it can be as high as 55% less HP lost. In our permutation tests, our findings for EOT are statistically significant " +
+                "for min speed but only for two from max speed. For VFL, only two setups are on each extreme of our p-values so we need more data for VFL runs.</li>\n" +
                 "<li><b>For Sopmod3 sl8/8, b-formation is superior</b> in all tested situations with an average of 25% less HP lost because unlike 416 and k11, she " +
-                "has an 8s icd so engaging sooner does not increase the amount of mobs that can be affected by her nade.</li>\n" +
+                "has an 8s icd so engaging sooner does not increase the amount of mobs that can be affected by her nade. Note that some of our results are not found " +
+                "to be statistically significant so we might want to add more samples to better distinguish if one is better than the other or if they are "
+                "equal.</li>\n" +
                 "<li><b>For Chipless Uzimod, due to the dinergates in the 1st fight, she does not want to be in 0-2 formation</b> as it can cause her to ignore 1 of " +
                 "the dinergates and attack the mobs in the back due to SMGs' random targeting as opposed to ARs' frontmost targeting which can potentially cause " +
                 "hundreds of hp loss to the tank.</li>";
@@ -1622,16 +1629,20 @@ sectionHeader = "Echelon Speed: As slow(4 movespeed, bringing MG or caped RF) as
 sectionBody = "<li><b>For Chipless 416 mod2 sl10/8, being at 4 movespeed is superior in <i>almost</i> all scenarios</b> tested with an average of 20% less HP lost. " +
                 "The only tested scenario where being as fast as possible did better was with the <i>M16 exo with a 2* fairy and Jill as the only buffer " +
                 "b-formation</i> with 25% less HP lost compared to being slower likely because the main threat with exo m16 are the vespids which you want to hit " +
-                "as many of with the nade which moving faster allows for b-formation.</li>\n" +
+                "as many of with the nade which moving faster allows for b-formation. Unfortunately we were not able to establish statistical significance in most " +
+                "of the setups.</li>\n" +
                 "<li><b>For Chipless K11 sl10 with VFL prefers moving faster only in low-buff situations in b-formation</b> since she needs her nade to hit as many " +
                 "mobs as possible as low-buffs affect bullet kill speeds. <b>With EOT moving faster is better in all b-formation battles</b> with the same reasoning " +
-                "as above. When moving slower is better it averages at 20% less HP lost but when moving faster is better it averages at 25% less HP lost.</li>\n" +
+                "as above. When moving slower is better it averages at 20% less HP lost but when moving faster is better it averages at 25% less HP lost. Note that " +
+                "with VFL we failed to reject the null hypothesis that the average damage taken are equal between setups but fortunately with EOT, we established " +
+                "statistical significance for all but one setup.</li>\n" +
                 "<li><b>For Sopmod3 sl8/8, moving slower is superior in all situations</b> with an average of 15% less HP lost with the same possible reasoning as " +
-                "with b vs 0-2-formation.</li>\n" +
+                "with b vs 0-2-formation but we only established statistically significant findings with half the setups.</li>\n" +
                 "<li><b>For Chipless Uzimod sl8/8</b>, there haven't been much tests with her especially because of the same problem with 0-2 formation, <b>she can " +
                 "only go at 7 movespeed at max to avoid that problem. In the situations she was tested in, she performs better at faster speeds for high buffs " +
                 "until very low-buff scenarios where slower is better</b> with an average of 15% less HP lost among the 3 scenarios where there was a significant " +
-                "enough % difference between the 2 movespeeds (more than 10%).</li>";
+                "enough % difference between the 2 movespeeds (more than 10%). In our permutation tests, we only established that one setup was statistically " +
+                "significant but it is in the other direction which indicates that more datapoints are needed for all setups.</li>";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // M16 vs SG
@@ -1643,7 +1654,10 @@ sectionBody = "<i>The main data for M16 is with exo</i> on as being able to equi
                 "combinations with 416 and K11</b> because that lets vespids shoot more which are the main threat to M16 with exo doing more than 1 damage per hit, " +
                 "despite sopmod potentially getting M16 into critical from full HP in those low-performance scenarios, <b>ARs being cheaper to repair still made M16 " +
                 "better than SGs for sop. Compared to M16 with armor, M16 is cheaper overall</b> since extra armor covers the vespid weakness which makes 416 with " +
-                "VFL on 2* beach being the only one that still has a higher repair cost for M16 than with SGs but that is worse than using her with SPEQ anyway.";
+                "VFL on 2* beach being the only one that still has a higher repair cost for M16 than with SGs but that is worse than using her with SPEQ anyway. In " +
+                "our permutation tests, only sopmod and two of 416's setups are found to be statistically significant in favor of m16. The rest lack enough evidence " +
+                "to reject the null hypothesis, some even reject the null hypothesis with evidence suggesting that SG is cheaper, particularly in low-buff scenarios " +
+                "which is interesting as we expect more damage taken per run there yet it ends up cheaper according to our permutation tests.";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // 416 speq vs vfl
@@ -1651,7 +1665,8 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 sectionHeader = "416 chipless mod2 sl10/8: VFL or SPEQ?"
 sectionBody = "<b>SPEQ is better in all situations</b> with an average of 20% less HP lost except M16 SPEQ + T-exo w/ 5*dmg1 Rescue fairy 0-2 formation 4 speed with " +
                 "15% less HP loss which is likely because the acc buff helps the regular bullets kill surviving vespids better especially because of VFL giving a " +
-                "lot of crit chance rather than increasing fp on an already one-shotting grenade.";
+                "lot of crit chance rather than increasing fp on an already one-shotting grenade. Note that only half of the setups were found to have statistically " +
+                "significant results with a few having low p-values pointing in the other direction.";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // k11 vfl vs eot
@@ -1659,7 +1674,9 @@ addSection(chiplessBody, sectionHeader, sectionBody);
 sectionHeader = "K11 chipless sl10: VFL or EOT?"
 sectionBody = "<b>VFL is better in b-formation at 4-speed or 0-2-formation at max speed</b> with an average of 25% less HP lost because bullet damage matters more " + 
                 "there. <b>EOT is better in 0-2 formation at 4-speed and b-formation at 6-speed</b> with an average of 20% less HP lost because the enemies will " +
-                "all enter in range but not be firing yet by the time she begins to launch her nades which EOT primarily strengthens.";
+                "all enter in range but not be firing yet by the time she begins to launch her nades which EOT primarily strengthens. Most of the setups were " +
+                "found to be statistically significant which indicates that there should be some delineation where one is better than the other with some middle" +
+                "ground where we do not yet have enough samples to determine which is better for that setup.";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 // sop vfl vs eot
@@ -1668,7 +1685,8 @@ sectionHeader = "Sopmod3 sl8/8: SPEQ + VFL/EOT?"
 sectionBody = "<b>VFL is better in 0-2 formation</b> likely because the lowered engagement time makes shooting stronger bullets better, except for 5* mortar fairy " +
                 "and M16 with armor in low-buff b-formation probably due to increasing modskill damage is not as important as killing mobs with bullets for those " +
                 "scenarios. <b>EOT performs better with b-formation</b> because that buys time to wait for the nade icd. When one is significantly better over the " +
-                "other, they average at 15% less HP lost for whichever is better in that scenario.";
+                "other, they average at 15% less HP lost for whichever is better in that scenario. Less than half of our results are found to be statistically " +
+                "significant which raises the need to increase the sample size especially considering sopmod's variance with her modskill randomness.";
 addSection(chiplessBody, sectionHeader, sectionBody);
 }
 }
@@ -1727,46 +1745,137 @@ d3.select("body").append("hr");
         chippedComparisonOptions.append("a")
                         .text("b-Formation vs 0-2-Formation")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Formation);
+                            comparisonAnalysis.html("<li>For chipped DPS when looking at the p-values for the mean, we reject the null hypothesis for all 416 " +
+                            "setups, all except beach fairy at minimum speed for k11, and only rescue fairy at max speed for uzi sl8/8 and additionally " +
+                            "beach fairy at min speed for uzi sl9/8. data suggests that the mean damage per run is lower for b-formation than on 0-2 for " +
+                            "those setup and DPS combinations.\n<li>Uzi sl8/8 with rescue fairy at minimum speed rejects the null hypothesis for the KS test so the" +
+                            "b-formation data likely comes from a different distribution compared to the 0-2 formation data but we lack sufficient data to say " +
+                            "whether the means of the two distributions is different or not.\n<li>416 sl10/8 with beach fairy at minimum speed interestingly rejects" +
+                            " the null hypothesis and implies that 0-2 formation likely has a lower standard deviation compared to b-formation despite likely " +
+                            "having a higher mean.\n<li>For the rest of our setups where we fail to reject the null hypothesis in p-values for the mean, we need " +
+                            "more data to verify our results, especially in setups that have a large standard deviation as a better idea of the distribution " +
+                            "of those can change the outcome of our permutation tests.");
+                            createComparisonSection(Comparison.Formation, "b-formation (low left-side p-value) vs 0-2-formation (high left-side p-value)");
                         });
         chippedComparisonOptions.append("a")
                         .text("4 vs max speed")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Speed);
+                            comparisonAnalysis.html("<li>For chipped DPS when looking at the p-values for the mean, we reject the null hypothesis for all setups " +
+                            "with 416, all but beach fairy with b-formation for k11, and only rescue fairy with 0-2 formation for uzi sl9/8 with a surprising " +
+                            "discrepancy where mortar fairy with b-formation had a p-value in the critical region for uzi sl8/8 but not sl9/8.\n<li>If we look at " +
+                            "their KS test p-values, there are additional setups with uzi sl9/8 where we reject the null hypothesis for beach fairy with both" +
+                            "formations but their mean and standard deviation p-values are close to the center so we need more data on those as we cannot have " +
+                            "the KS test disagree with the mean and standard deviation since that implies that the two distributions have the same mean and " +
+                            "standard deviation yet their cumulative distribution functions are far enough apart that we may consider them different distributions " +
+                            "which indicates to us that we lack proper information of the dataset due to the low sample size.");
+                            createComparisonSection(Comparison.Speed, "min speed (low left-side p-value) vs max speed (high left-side p-value)");
                         });
         chippedComparisonOptions.append("a")
                         .text("Uzi mod SL8/8 vs SL9/8")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Uzi);
+                            comparisonAnalysis.html("<li>For comparing the improvement of uzi's skill level, we only reject the null hypothesis for beach fairy b-" +
+                            "formtion minimum speed. This is partly due to our choice of p-value of 0.01 as we have a few setups with p-values within 0.0255 " +
+                            "but as we want to observe significant difference, we fail to reject the null hypothesis under our stated conditions.\n<li>Another " +
+                            "detail to note is that the damage profile of uzi is different compared to the other DPS choices, her damage is mostly with her " +
+                            "skill which has a long downtime and she struggles to clean up the survivors before the next skill which contributes to the large " +
+                            "variance in her damage taken each run. With our low sample size we likely fail to capture the distribution of each setup and it would " +
+                            "not be surprising if most of the results changed with increased samples.");
+                            createComparisonSection(Comparison.Uzi, "SL8/8 (low left-side p-value) vs SL9/8 Uzi (high left-side p-value)");
                         });
         
         chiplessComparisonOptions = comparisonDropdown.append("div").attr("class", "dropdownBox").style("display", "none");
         chiplessComparisonOptions.append("a")
                         .text("T-Exo vs Armor")
                         .on("click", () => {
-                            comparisonAnalysis.text("Our main statistic of interest is if the mean is not equal and given our specified p-value we reject the " +
-                            "null hypothesis for 10 out of 14 comparisons. Additionally, evidence suggests that armor may be better than T-exo. ");
-                            createComparisonSection(Comparison.Exo_Armor);
+                            comparisonAnalysis.html("<li>Our main statistic of interest is if the mean is not equal and given our specified p-value we reject the " +
+                            "null hypothesis for 11 out of 14 comparisons. Additionally, evidence suggests that armor may be better than T-exo on those setups.\n" +
+                            "<li>416 with vfl failed to reject the null hypothesis for mean on b-formation beach fairy minimum speed but it does reject it for " +
+                            "standard deviation so at the very least, we have evidence that suggests that armor improves the standard deviation of her runs " +
+                            "even if we lack evidence to reject the null hypothesis that the mean of the two datasets is equal.\n<li>For sopmod with both equipment " +
+                            "configurations, we fail to reject the null hypothesis with rescue fairy likely because her damage profile is focused more on normal " +
+                            "attacks as her skill is the worst among the DPS options with the longest cooldown and subpar area of effect.\n<li>The benefit of armor " +
+                            "over t-exo is specifically on one fight during the run where there is a specific enemy that can deal more than 1 damage if m16 does " +
+                            "not use armor and perhaps sopmod spends the least time with those enemies alive with rescue fairy resulting in little difference " +
+                            "compared to having m16 with armor. Unfortunately though that sopmod is the worst of the DPS options so her results are the least " +
+                            "important of the tested DPS when it comes to constructing generalizations from our findings.");
+                            createComparisonSection(Comparison.Exo_Armor, "T-exo (low left-side p-value) vs armor (high left-side p-value)");
                         });
         chiplessComparisonOptions.append("a")
                         .text("b-Formation vs 0-2-Formation")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Formation);
+                            comparisonAnalysis.html("<li>For chipless setups, we reject the null hypothesis for half the setups but the direction of the p-value " +
+                            "differs between DPS, 416 and sopmod have evidence suggesting that the means of most of their runs is smaller with b-formation " +
+                            "over 0-2 formation whereas k11 is split among the setups that have p-values in the critical region.\n<li>With vfl there is an equal " +
+                            "number of setups with p-values in the left-side critical region as there are those in the right-side critical region. Aside from " +
+                            "both runs having m16 with t-exo as the tank, I cannot determine any other common ground with the two setups, that have evidence " +
+                            "that suggests that b-formation is preferred over 0-2 formation, compared to similar setups that fail to reject the null hypothesis." +
+                            "The two setups that have evidence that suggests 0-2 is better than b-formation have beach fairy with hg in minimum speed which set " +
+                            "them apart from all other setups and similar setups with poor buff and minimum speed also have high left-side p-values but not " +
+                            "significant enough to reject the null hypothesis with the information available.\n<li>K11 with eot rejects the null hypothesis for " +
+                            "half its tested setups, additionally, all minimum speed setups show evidence suggesting that 0-2 formation is better than b-formation. " +
+                            "The rest have p-values closer to the left-side and two of which are in the critical region and they both have super shorty as tank " +
+                            "with a strong fairy at maximum speed.\n<li>For the other two DPS, minimal buffs with beach fairy at minimum speed is the largest region" +
+                            " where we fail to reject the null hypothesis, possibly due to a lack of buffs causing larger variance which makes it difficult to " +
+                            "determine which formation is better or the lack of buffs simply equalizes the formations and their mean is indeed roughly equal.");
+                            createComparisonSection(Comparison.Formation, "b-formation (low left-side p-value) vs 0-2-formation (high left-side p-value)");
                         });
         chiplessComparisonOptions.append("a")
                         .text("4 vs max speed")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Speed);
+                            comparisonAnalysis.html("<li>For chipless setups, we reject the null hypothesis for the mean on approximately less than half the setups." +
+                            "\n<li>For 416 with speq, super shorty tank with rescue fairy and 0-2 formation with beach fairy have evidence suggesting that minimum " +
+                            "speed is better; interestingly t-exo m16 with beach fairy with b-formation suggests that maximum speed is better and is the only setup" +
+                            " with such a high p-value.\n<li>For 416 with vfl, only rescue fairy with t-exo m16 with 0-2 formation and super shorty with beach " +
+                            "fairy with Jill reject the null hypothesis, with evidence suggesting that minimum speed is better. Overall, with exception to the one " +
+                            "outlier, it should be safe to recommend running minimum speed with 416.\n<li>For k11 vfl, only super shorty with beach fairy with Jill " +
+                            "with 0-2 formation rejects the null hypothesis, with evidence suggesting that minimum speed is better; additionally b-formation with " +
+                            "beach fairy rejects the null hypothesis with evidence suggesting that maximum speed is better. This distribution of p-values leads to " +
+                            "our recommendation to simply follow whichever speed the partnered DPS prefers.\n<li>For k11 eot, we reject the null hypothesis for all " +
+                            "but one setup, super short with beach only with 0-2 formation, with a roughly even split between the two extremes. The groups have " +
+                            "common ground, b-formation p-values are on the right-side extreme suggesting maximum speed is better whereas 0-2 formation p-values are " +
+                            "on the left-side extreme suggesting minimum speed is better.\n<li>For sopmod, most of the setups reject the null hypothesis with the " +
+                            "exception of t-exo m16 with 0-2 formation and super shorty with b-formation both with rescue fairy, and all b-formation setups with " +
+                            "beach fairy. It is surprising that with low buff setups, evidence suggests that 0-2 formation more from minimum speed than b-formation " +
+                            "does considering sopmod's long cooldown suggesting a longer time before engaging the enemy being beneficial. With the stronger fairies," +
+                            " rescue fairy is the only one that has setups that fail to reject the null hypothesis but the other factors are not shared between the " +
+                            "two which makes it hard to pinpoint as to why, the only angle I can observe is that the range of outliers in each dataset is " +
+                            "relatively large which has the potential to create many more extreme permutations of the dataset compared to the original, pushing the " +
+                            "p-values closer to the center. For sopmod eot, we reject the null hypothesis for only 3 setups, the runs with strong fairies generally have p-values below " +
+                            "0.1 but our specified critical region is 0.05 so we fail to reject half of them. The only setup in low buffs that we rejected the null" +
+                            "hypothesis with is t-exo m16 with beach fairy in 0-2 formation; there are no apparent similar p-values with similar setups. Given the " +
+                            "p-values, it should be safe to recommend to use minimum speed with sopmod.\n<li>For uzi we only reject the null hypothesis for 1 setup" +
+                            " and there is only 1 setup with a p-value close to the left-side extreme but not enough to reject the null hypothesis so we can " +
+                            "generalize, with an unfortunately large uncertainty, that uzi prefers maximum speed likely due to her low initial skill cooldown " +
+                            "so engaging sooner might be beneficial but also not engaging too fast that we might run into the same issues with 0-2 formation.");
+                            createComparisonSection(Comparison.Speed, "min speed (low left-side p-value) vs max speed (high left-side p-value)");
                         });
         chiplessComparisonOptions.append("a")
                         .text("SG vs M16 tank")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Tank);
+                            comparisonAnalysis.html("<li>For chipless DPS, majority of the setups where we reject the null hypothesis are with sopmod, where the " +
+                            "evidence suggests that m16 is better than super shorty in terms of average resource cost per run in repairs, even the setups where we " +
+                            "failed to reject the null hypothesis have p-values close to the right-side critical region. This is likely because of sopmod's poor " +
+                            "performance relative to the other DPS units, resulting in much higher damage taken and SGs like super shorty cost much more to repair " +
+                            "than m16.\n<li>For the other DPS, we reject the null hypothesis only a few times, and only two of them have evidence suggesting that " +
+                            "m16 is cheaper to use than SGs.\n<li>Considering the motivation for the chosen p-value, it appears safe to recommend that players use" +
+                            "any SG to soak up exp rather than using m16 who would already be max-leveled long beforehand as long as the SG does not fall critical " +
+                            "in a single run.");
+                            createComparisonSection(Comparison.Tank, "SG (low left-side p-value) vs T-exo M16 (high left-side p-value)");
                         });
         chiplessComparisonOptions.append("a")
                         .text("VFL vs EOT/SPEQ")
                         .on("click", () => {
-                            createComparisonSection(Comparison.Equip);
+                            comparisonAnalysis.html("<li>For chipless DPS, 416 rejects the null hypothesis for approximately half the setups. All of those setups " +
+                            "show evidence that suggests that SPEQ is preferred. The only setups that have p-values on the lower side involve T-exo m16 which has " +
+                            "been previously established that armor is generally better than T-exo so we can safely disregard those.\n<li>For k11 her results are " +
+                            "split but majority reject the null hypothesis. Most of b-formation p-values fall under the left-side supporting vfl, 0-2 formation " +
+                            "generally appears mixed either rejecting the null hypothesis with evidence suggesting that eot is better, the inverse, or failing " +
+                            "to reject the null hypothesis. This might be due to k11's skill targeting being randomized resulting in battles that sometimes end " +
+                            "instantly and other times take minutes. 0-2 formation increases that variance by causing the enemies to position themselves further " +
+                            "apart from each other which makes it harder to catch them all in a single skill use. This result ends with no definitive recommendation" +
+                            " in the case of k11's equipment.\n<li>Sopmod's results are surprising in that few reject the null hypothesis when our critical region " +
+                            "is fairy large. The distribution of the p-values is also ambiguous making it hard to definitively state the better equipment.");
+                            createComparisonSection(Comparison.Equip, "VFL (low left-side p-value) vs EOT/SPEQ (high left-side p-value)");
                         });
     }
 
