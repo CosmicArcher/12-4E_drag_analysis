@@ -65,6 +65,7 @@ class PermutationTester {
         return PermutationTesterSingleton;
     }
     // perform a Monte Carlo permutation test comparing the two datasets if they come from the same distribution, calculate p-value based on 
+    // original set rank / total permutations and take that as the p-value where rank is nth lowest or highest depending on isLefSide bool where lowest if true
     performTest(data1, data2, mode, num_permutations, isLeftSide = true) {
         if (PermutationTesterSingleton) {
             // start by combining the two datasets and reshuffling the groups with the same sizes as before

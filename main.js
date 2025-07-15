@@ -1616,7 +1616,7 @@ sectionBody = "<li><b>For Chipless 416 mod2 sl10/8, 0-2 formation is only consid
                 "for min speed but only for two from max speed. For VFL, only two setups are on each extreme of our p-values so we need more data for VFL runs.</li>\n" +
                 "<li><b>For Sopmod3 sl8/8, b-formation is superior</b> in all tested situations with an average of 25% less HP lost because unlike 416 and k11, she " +
                 "has an 8s icd so engaging sooner does not increase the amount of mobs that can be affected by her nade. Note that some of our results are not found " +
-                "to be statistically significant so we might want to add more samples to better distinguish if one is better than the other or if they are "
+                "to be statistically significant so we might want to add more samples to better distinguish if one is better than the other or if they are " +
                 "equal.</li>\n" +
                 "<li><b>For Chipless Uzimod, due to the dinergates in the 1st fight, she does not want to be in 0-2 formation</b> as it can cause her to ignore 1 of " +
                 "the dinergates and attack the mobs in the back due to SMGs' random targeting as opposed to ARs' frontmost targeting which can potentially cause " +
@@ -1833,12 +1833,12 @@ d3.select("body").append("hr");
                             "our recommendation to simply follow whichever speed the partnered DPS prefers.\n<li>For k11 eot, we reject the null hypothesis for all " +
                             "but one setup, super short with beach only with 0-2 formation, with a roughly even split between the two extremes. The groups have " +
                             "common ground, b-formation p-values are on the right-side extreme suggesting maximum speed is better whereas 0-2 formation p-values are " +
-                            "on the left-side extreme suggesting minimum speed is better.\n<li>For sopmod, most of the setups reject the null hypothesis with the " +
+                            "on the left-side extreme suggesting minimum speed is better.\n<li>For vfl sopmod, most of the setups reject the null hypothesis with the " +
                             "exception of t-exo m16 with 0-2 formation and super shorty with b-formation both with rescue fairy, and all b-formation setups with " +
-                            "beach fairy. It is surprising that with low buff setups, evidence suggests that 0-2 formation more from minimum speed than b-formation " +
-                            "does considering sopmod's long cooldown suggesting a longer time before engaging the enemy being beneficial. With the stronger fairies," +
-                            " rescue fairy is the only one that has setups that fail to reject the null hypothesis but the other factors are not shared between the " +
-                            "two which makes it hard to pinpoint as to why, the only angle I can observe is that the range of outliers in each dataset is " +
+                            "beach fairy. It is surprising that with low buff setups, evidence suggests that 0-2 formation benefits more from minimum speed than b-" +
+                            "formation does considering sopmod's long cooldown suggesting a longer time before engaging the enemy being beneficial. With the stronger" +
+                            "fairies, rescue fairy is the only one that has setups that fail to reject the null hypothesis but the other factors are not shared between " +
+                            "the two which makes it hard to pinpoint as to why, the only angle I can observe is that the range of outliers in each dataset is " +
                             "relatively large which has the potential to create many more extreme permutations of the dataset compared to the original, pushing the " +
                             "p-values closer to the center. For sopmod eot, we reject the null hypothesis for only 3 setups, the runs with strong fairies generally have p-values below " +
                             "0.1 but our specified critical region is 0.05 so we fail to reject half of them. The only setup in low buffs that we rejected the null" +
