@@ -1,0 +1,125 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor%}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <form action="{% url 'Findings:View Raw Data' %}" method="get" id="form">
+            {% csrf_token %}
+            <div style="display: grid;">
+                <h4>Filters</h4>
+                <div>
+                    <label for="Formation">Formation: </label>
+                    <select id="Formation" name="Formation">
+                        <option value="all">All</option>
+                        {% for value in formations %}
+                            {% if value == currFormation %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="Fairy">Fairy: </label>
+                    <select id="Fairy" name="Fairy">
+                        <option value="all">All</option>
+                        {% for value in fairies %}
+                            {% if value == currFairy %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="Speed">Speed: </label>
+                    <select id="Speed" name="Speed">
+                        <option value="all">All</option>
+                        {% for value in speeds %}
+                            {% if value == currSpeed %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="HG">Has HG: </label>
+                    <select id="HG"  name="HG">
+                        <option value="all">All</option>
+                        {% for value in hgs %}
+                            {% if value == currHG %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <br>
+                <div>
+                    <label for="Tank">Tank: </label>
+                    <select id="Tank" name="Tank">
+                        <option value="all">All</option>
+                        {% for value in tanks %}
+                            {% if value == currTank %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="Armor">Has Armor: </label>
+                    <select id="Armor" name="Armor">
+                        <option value="all">All</option>
+                        {% for value in armors %}
+                            {% if value == currArmor %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="DPS">DPS: </label>
+                    <select id="DPS" name="DPS">
+                        <option value="all">All</option>
+                        {% for value in DPS %}
+                            {% if value == currDPS %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                    <label for="Chip">Has Chip: </label>
+                    <select id="Chip" name="Chip">
+                        <option value="all">All</option>
+                        {% for value in chips %}
+                            {% if value == currChip %}
+                                <option value="{{value}}" selected>{{value}}</option>
+                            {% else %}
+                                <option value="{{value}}">{{value}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div><br>
+                <div>
+                    <input type="button" id="reset" value="Reset Filters">
+                </div>
+            </div>
+        </form>
+        {% autoescape off %}
+            {{plotDiv}}
+        {% endautoescape %}
+    </body>
+
+    <script src="{% static 'Findings/viewData.js' %}"></script>
+</html>

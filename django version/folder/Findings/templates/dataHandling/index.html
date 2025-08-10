@@ -1,0 +1,19 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor%}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <h3>Current Data</h3>
+        {% autoescape off %}
+            {{plotDiv}}
+        {% endautoescape %}
+    </body>
+</html>

@@ -1,0 +1,25 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor%}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <p style="color: red;">Note: Page is intended to only be used to initialize data into an empty table</p>
+        <p>Current First 50 Rows of Table</p>
+        {% autoescape off %}
+            {{plotDiv}}
+        {% endautoescape %}
+        <form action="{% url 'dataHandling:Load CSV' %}" method="post">
+            {% csrf_token %}
+            <h3>CSV file should be labeled as "12-4E_Dragger_Data.csv" in DjangoVersion/folder</h3>
+            <input type="submit" value="Load CSV">
+        </form>
+    </body>
+</html>

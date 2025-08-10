@@ -1,0 +1,49 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor%}
+        </div>
+        <h1>{{pageTitle}}</h1>
+
+        <form action="{% url 'dataHandling:add' %}" method="post">
+            {% csrf_token %}
+            <label for="Formation">Formation: </label><br>
+            <select id="Formation" name="formation">
+            </select><br><br>
+            <label for="Fairy">Fairy: </label><br>
+            <select id="Fairy" name="fairy">
+            </select><br><br>
+            <label for="Speed">Speed: </label><br>
+            <select id="Speed" name="speed">
+            </select><br><br>
+            <label for="HG">Has HG: </label>
+            <input id="HG" name="has_HG" type="checkbox" value="1"><br><br>
+            <label for="Tank">Tank: </label><br>
+            <select id="Tank" name="tank">
+            </select><br><br>
+            <label for="Armor">Has Armor: </label>
+            <input id="Armor" name="has_Armor" type="checkbox" value="1"><br><br>
+            <label for="DPS">DPS: </label><br>
+            <select id="DPS" name="DPS">
+            </select><br><br>
+            <label for="Chip">Has Chip: </label>
+            <input id="Chip" name="has_Chip" type="checkbox" value="1"><br><br>
+            <label for="Damage">Damage (Integer): </label><br>
+            <input type="text" id="Damage" name="damage"><br><br><br>
+
+            <input type="submit" id="submit" value="Add Data" disabled>
+        </form>
+    </body>
+
+    <script src="{% static 'dataHandling/newData.js' %}"></script>
+</html>

@@ -1,0 +1,55 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor%}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <h3>Current Data</h3>
+        <form action="{% url 'dataHandling:delete' %}" method="post">
+            {% csrf_token %}
+            <div style="overflow-y: auto; width: fit-content; height: 200px;">
+                <table>
+                    <tr>
+                        <th>Selected</th>
+                        <th>Formation</th>
+                        <th>Fairy</th>
+                        <th>Speed</th>
+                        <th>Has HG</th>
+                        <th>Tank</th>
+                        <th>Has Armor</th>
+                        <th>DPS</th>
+                        <th>Has Chip</th>
+                        <th>Damage</th>
+                        <th>Percent Damage</th>
+                    </tr>
+                {% for setup in setups %}
+                    <tr>
+                        <td><input type="checkbox" name="row{{ forloop.counter }}" value="1"></td>
+                        <td>{{setup.formation}}</td>
+                        <td>{{setup.fairy}}</td>
+                        <td>{{setup.speed}}</td>
+                        <td>{{setup.has_HG}}</td>
+                        <td>{{setup.tank}}</td>
+                        <td>{{setup.has_armor}}</td>
+                        <td>{{setup.DPS}}</td>
+                        <td>{{setup.has_chip}}</td>
+                        <td>{{setup.damage}}</td>
+                        <td>{{setup.Perc_Damage}}</td>
+                    </tr>
+                {% endfor %}
+                </table>
+            </div>
+            <br><br><br>
+            <input type="submit" value="Delete Rows">
+        </form>
+    </body>
+
+    <script src="{% static 'dataHandling/deleteData.js' %}"></script>
+</html>

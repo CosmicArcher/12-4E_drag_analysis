@@ -1,0 +1,26 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor %}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <p style="color: red;">Beware: certain comparisons may take several minutes to calculate the p-values, wait for the page to finish loading</p>
+        <form action="{% url 'dataHandling:write result' %}" method="post">
+            {% csrf_token %}
+            <label for="Comparison">Select Comparison: </label>
+            <select id="Comparison" name="Comparison">
+                {% for setup in comparisons %}
+                    <option value="{{setup}}">{{setup}}</option>
+                {% endfor %}
+            </select>
+            <input type="submit" value="Calculate">
+        </form>
+    </body>
+</html>

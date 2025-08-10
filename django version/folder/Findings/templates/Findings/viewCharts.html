@@ -1,0 +1,43 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'style.css' %}">
+
+<html>
+    <body>
+        <title>{{pageTitle}}</title>
+        <div style="display: flex;">
+            {% for connectedPage in connectedPagesList %}
+                <a href="{{connectedPage.url}}" class="box">{{connectedPage.name}}</a>
+            {% endfor %}
+        </div>
+        <h1>{{pageTitle}}</h1>
+        <form action="{% url 'Findings:View Charts' %}" method="get">
+            {% csrf_token %}
+            <label for="Setup">Tested Setups: </label>
+            <select id="Setup" name="Setup" oninput="document.getElementById('DPS').value = 'all';this.form.submit()">
+                <option value="all">All</option>
+                {% for setup in namedSetups %}
+                    {% if setup == currentSetup %}
+                        <option value="{{setup}}" selected>{{setup}}</option>
+                    {% else %}
+                        <option value="{{setup}}">{{setup}}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+            <label for="DPS">Tested DPS: </label>
+            <select id="DPS" name="DPS" oninput="this.form.submit()">
+                <option value="all">All</option>
+                {% for dps in DPSList %}
+                    {% if dps == currentDPS %}
+                        <option value="{{dps}}" selected>{{dps}}</option>
+                    {% else %}
+                        <option value="{{dps}}">{{dps}}</option>
+                    {% endif %}
+                {% endfor %}
+            </select>
+        </form>
+        {% autoescape off %}
+            {{ plotDiv }}
+        {% endautoescape %}
+    </body>
+</html>
